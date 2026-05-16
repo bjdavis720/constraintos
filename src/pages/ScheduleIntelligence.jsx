@@ -41,7 +41,7 @@ function ScheduleIntelligence({
   const [activityFilter, setActivityFilter] = useState("critical");
 
   const [collapsedSections, setCollapsedSections] = useState({
-    slippedActivities: false,
+    slippedActivities: true,
     recoveredActivities: true,
     floatErosion: true,
     floatRecovery: true,
@@ -202,7 +202,9 @@ function ScheduleIntelligence({
     const text = await file.text();
     const fileName = file.name.toLowerCase();
 
-    const parsedRows = fileName.endsWith(".xer") ? parseXER(text) : parseCSV(text);
+    const parsedRows = fileName.endsWith(".xer")
+      ? parseXER(text)
+      : parseCSV(text);
 
     if (parsedRows.length === 0) {
       alert("No schedule activities were found in this file.");
@@ -286,6 +288,45 @@ function ScheduleIntelligence({
         )}
       </div>
 
+      {comparisonResults && (
+        <>
+          <div className="card">
+            <h3>Schedule Delta Summary</h3>
+
+            <div className="metric-grid">
+              <div className="mini-metric">
+                <strong>{comparisonResults.slippedActivities.length}</strong>
+                <span>Slipped</span>
+              </div>
+              <div className="mini-metric">
+                <strong>{comparisonResults.recoveredActivities.length}</strong>
+                <span>Recovered</span>
+              </div>
+              <div className="mini-metric">
+                <strong>{comparisonResults.floatErosion.length}</strong>
+                <span>Float Erosion</span>
+              </div>
+              <div className="mini-metric">
+                <strong>{comparisonResults.floatRecovery.length}</strong>
+                <span>Float Recovery</span>
+              </div>
+              <div className="mini-metric">
+                <strong>{comparisonResults.newCriticalActivities.length}</strong>
+                <span>New Critical</span>
+              </div>
+              <div className="mini-metric">
+                <strong>{comparisonResults.newActivities.length}</strong>
+                <span>New Activities</span>
+              </div>
+              <div className="mini-metric">
+                <strong>{comparisonResults.removedActivities.length}</strong>
+                <span>Removed</span>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
       {latestSnapshot && (
         <div className="card">
           <div className="section-header-row">
@@ -366,41 +407,6 @@ function ScheduleIntelligence({
 
       {comparisonResults && (
         <>
-          <div className="card">
-            <h3>Schedule Delta Summary</h3>
-
-            <div className="metric-grid">
-              <div className="mini-metric">
-                <strong>{comparisonResults.slippedActivities.length}</strong>
-                <span>Slipped</span>
-              </div>
-              <div className="mini-metric">
-                <strong>{comparisonResults.recoveredActivities.length}</strong>
-                <span>Recovered</span>
-              </div>
-              <div className="mini-metric">
-                <strong>{comparisonResults.floatErosion.length}</strong>
-                <span>Float Erosion</span>
-              </div>
-              <div className="mini-metric">
-                <strong>{comparisonResults.floatRecovery.length}</strong>
-                <span>Float Recovery</span>
-              </div>
-              <div className="mini-metric">
-                <strong>{comparisonResults.newCriticalActivities.length}</strong>
-                <span>New Critical</span>
-              </div>
-              <div className="mini-metric">
-                <strong>{comparisonResults.newActivities.length}</strong>
-                <span>New Activities</span>
-              </div>
-              <div className="mini-metric">
-                <strong>{comparisonResults.removedActivities.length}</strong>
-                <span>Removed</span>
-              </div>
-            </div>
-          </div>
-
           <DeltaTable
             sectionKey="slippedActivities"
             collapsed={collapsedSections.slippedActivities}
