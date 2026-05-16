@@ -1,0 +1,502 @@
+import { useState } from "react";
+
+import {
+  normalizeScheduleRow,
+  compareScheduleSnapshots,
+  isCriticalActivity,
+} from "../utils/scheduleDeltaUtils.js";
+
+import { parseXER } from "../utils/xerParser.js";
+
+function parseCSV(text) {
+  const lines = text.split("\n").filter((line) => line.trim() !== "");
+
+  if (lines.length < 2) return [];
+
+  const headers = lines[0].split(",").map((h) => h.trim());
+
+  return lines.slice(1).map((line) => {
+    const values = line.split(",");
+    const row = {};
+
+    headers.forEach((header, index) => {
+      row[header] = values[index]?.trim() || "";
+    });
+
+    return normalizeScheduleRow(row);
+  });
+}
+
+function ScheduleIntelligence({
+  project,
+  scheduleSnapshots,
+  updateCurrentProjectData,
+  issues,
+  milestones = [],
+  importMilestones,
+  importIssuesFromSchedule,
+}) {
+  const [comparisonResults, setComparisonResults] = useState(null);
+  const [selectedMilestones, setSelectedMilestones] = useState({});
+  const [activityFilter, setActivityFilter] = useState("critical");
+
+  const latestSnapshot =
+    scheduleSnapshots.length > 0
+      ? scheduleSnapshots[scheduleSnapshots.length - 1]
+      : null;
+
+  const latestActivities = latestSnapshot?.rows || [];
+
+  const filteredLatestActivities = latestActivities
+  .filter((activity) => {
+    if (activityFilter === "critical") return isCriticalActivity(activity);
+
+    if (activityFilter === "milestones") {
+      return (
+        String(activity.activityName || "")
+          .toLowerCase()
+          .includes("milestone") ||
+        String(activity.activityId || "")
+          .toLowerCase()
+          .includes("mile")
+      );
+    }
+
+    return true;
+  })
+  .sort((a, b) => {
+    const dateA = a.finish ? new Date(a.finish) : new Date(9999, 0, 1);
+    const dateB = b.finish ? new Date(b.finish) : new Date(9999, 0, 1);
+
+    return dateA - dateB;
+  });
+
+  function getRowKey(activity, issueType) {
+    return `${issueType}-${activity.activityId}`;
+  }
+
+  function getLinkedMilestone(activity, issueType) {
+    const rowKey = getRowKey(activity, issueType);
+    return selectedMilestones[rowKey] || "Unassigned";
+  }
+
+  function createIssueFromDelta(activity, issueType) {
+    const linkedMilestone = getLinkedMilestone(activity, issueType);
+
+    const alreadyExists = issues.some(
+      (issue) =>
+        issue.source === "Schedule Intelligence" &&
+        issue.activityId === activity.activityId &&
+        issue.scheduleDeltaType === issueType &&
+        issue.status !== "Closed"
+    );
+
+    if (alreadyExists) {
+      alert("An open issue already exists for this schedule item.");
+      return;
+    }
+
+    const newIssue = {
+      id: Date.now(),
+      title: `${issueType}: ${activity.activityName}`,
+      source: "Schedule Intelligence",
+      scheduleDeltaType: issueType,
+      activityId: activity.activityId,
+      milestone: linkedMilestone,
+      start: activity.start || "",
+      finish: activity.currentFinish || activity.finish || "",
+      totalFloat: activity.currentFloat ?? activity.totalFloat ?? "",
+      status: "Open",
+      manuallyEscalated: issueType.includes("Slipped"),
+      createdAt: new Date().toISOString(),
+      notes: buildIssueNotes(activity, issueType, linkedMilestone),
+    };
+
+    updateCurrentProjectData({
+      issues: [...issues, newIssue],
+    });
+
+    alert("Schedule issue created.");
+  }
+
+  function buildIssueNotes(activity, issueType, linkedMilestone) {
+    const milestoneText =
+      linkedMilestone && linkedMilestone !== "Unassigned"
+        ? ` Linked milestone: ${linkedMilestone}.`
+        : "";
+
+    if (issueType === "Slipped Activity") {
+      return `Schedule Intelligence identified a ${activity.deltaDays}-day slip. Previous finish: ${activity.previousFinish}. Current finish: ${activity.currentFinish}.${milestoneText}`;
+    }
+
+    if (issueType === "Float Erosion") {
+      return `Schedule Intelligence identified float erosion. Previous float: ${activity.previousFloat}. Current float: ${activity.currentFloat}.${milestoneText}`;
+    }
+
+    if (issueType === "New Critical Activity") {
+      return `Schedule Intelligence identified this activity as newly critical. Current float: ${
+        activity.currentFloat ?? activity.totalFloat
+      }.${milestoneText}`;
+    }
+
+    if (issueType === "Recovered Activity") {
+      return `Schedule Intelligence identified a ${activity.deltaDays}-day recovery. Previous finish: ${activity.previousFinish}. Current finish: ${activity.currentFinish}.${milestoneText}`;
+    }
+
+    return `Schedule Intelligence generated this issue from schedule activity data.${milestoneText}`;
+  }
+
+  function addCurrentActivityToMilestones(activity) {
+    importMilestones([activity]);
+  }
+
+  function createIssueFromCurrentActivity(activity) {
+    importIssuesFromSchedule([
+      {
+        ...activity,
+        scheduleDeltaType: "Current Schedule Activity",
+      },
+    ]);
+  }
+
+  async function handleScheduleUpload(event) {
+    const file = event.target.files?.[0];
+
+    if (!file) return;
+
+    const text = await file.text();
+    const fileName = file.name.toLowerCase();
+
+    const parsedRows = fileName.endsWith(".xer")
+      ? parseXER(text)
+      : parseCSV(text);
+
+    if (parsedRows.length === 0) {
+      alert("No schedule activities were found in this file.");
+      return;
+    }
+
+    const newSnapshot = {
+      id: Date.now(),
+      fileName: file.name,
+      uploadDate: new Date().toISOString(),
+      rows: parsedRows,
+    };
+
+    const updatedSnapshots = [...scheduleSnapshots, newSnapshot];
+
+    updateCurrentProjectData({
+      scheduleSnapshots: updatedSnapshots,
+    });
+
+    if (updatedSnapshots.length >= 2) {
+      const previous = updatedSnapshots[updatedSnapshots.length - 2];
+      const current = updatedSnapshots[updatedSnapshots.length - 1];
+
+      const results = compareScheduleSnapshots(previous.rows, current.rows);
+      setComparisonResults(results);
+    }
+  }
+
+  return (
+    <div className="page">
+      <div className="page-header">
+        <h1>Schedule Intelligence</h1>
+        <p>Operational schedule delta analysis for {project}</p>
+      </div>
+
+      <div className="card">
+        <h3>Upload Schedule Snapshot</h3>
+
+        <input type="file" accept=".csv,.xer" onChange={handleScheduleUpload} />
+
+        <p style={{ marginTop: "10px" }}>
+          Upload CSV (see template) or XER schedule exports to compare milestone
+          movement, float erosion, and critical path changes.
+        </p>
+      </div>
+
+      <div className="card">
+        <h3>Schedule Snapshots</h3>
+
+        {scheduleSnapshots.length > 0 && (
+          <p>
+            <strong>Last Updated:</strong>{" "}
+            {new Date(
+              scheduleSnapshots[scheduleSnapshots.length - 1].uploadDate
+            ).toLocaleString()}
+          </p>
+        )}
+
+        {scheduleSnapshots.length === 0 ? (
+          <p>No schedule snapshots uploaded yet.</p>
+        ) : (
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>File</th>
+                <th>Activities</th>
+                <th>Uploaded</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {scheduleSnapshots.map((snapshot) => (
+                <tr key={snapshot.id}>
+                  <td>{snapshot.fileName}</td>
+                  <td>{snapshot.rows.length}</td>
+                  <td>{new Date(snapshot.uploadDate).toLocaleString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {latestSnapshot && (
+        <div className="card">
+          <div className="section-header-row">
+            <h3>Current Schedule Activities</h3>
+
+            <select
+              value={activityFilter}
+              onChange={(e) => setActivityFilter(e.target.value)}
+            >
+              <option value="critical">Critical / Zero Float</option>
+              <option value="milestones">Milestone-Like Activities</option>
+              <option value="all">All Activities</option>
+            </select>
+          </div>
+
+          <p>
+            Latest snapshot: <strong>{latestSnapshot.fileName}</strong>
+          </p>
+
+          {filteredLatestActivities.length === 0 ? (
+            <p>No activities match this filter.</p>
+          ) : (
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Activity</th>
+                  <th>Start</th>
+                  <th>Finish</th>
+                  <th>Total Float</th>
+                  <th>Critical</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {filteredLatestActivities.map((activity) => {
+  const alreadyMilestone = milestones.some(
+    (milestone) =>
+      milestone.sourceActivityId === activity.activityId ||
+      milestone.name === activity.activityName
+  );
+
+  return (
+    <tr key={`current-${activity.activityId}`}>
+      <td>{activity.activityId}</td>
+      <td>{activity.activityName}</td>
+      <td>{activity.start || "-"}</td>
+      <td>{activity.finish || "-"}</td>
+      <td>{activity.totalFloat || "-"}</td>
+      <td>{isCriticalActivity(activity) ? "Yes" : "No"}</td>
+      <td>
+        <button
+  type="button"
+  className="secondary-button small-button"
+  onClick={() => addCurrentActivityToMilestones(activity)}
+  disabled={alreadyMilestone}
+>
+  {alreadyMilestone ? "Already Added" : "Add Milestone"}
+</button>
+
+        <button
+          type="button"
+          className="secondary-button small-button"
+          onClick={() => createIssueFromCurrentActivity(activity)}
+        >
+          Create Issue
+        </button>
+      </td>
+    </tr>
+  );
+})}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
+
+      {comparisonResults && (
+        <>
+          <DeltaTable
+            title={`🔴 Slipped Activities (${comparisonResults.slippedActivities.length})`}
+            emptyText="No slipped activities detected."
+            rows={comparisonResults.slippedActivities}
+            issueType="Slipped Activity"
+            createIssueFromDelta={createIssueFromDelta}
+            milestones={milestones}
+            selectedMilestones={selectedMilestones}
+            setSelectedMilestones={setSelectedMilestones}
+            getRowKey={getRowKey}
+            columns={[
+              ["activityId", "ID"],
+              ["activityName", "Activity"],
+              ["previousFinish", "Previous Finish"],
+              ["currentFinish", "Current Finish"],
+              ["deltaDays", "Slip"],
+            ]}
+            suffixByKey={{ deltaDays: " days" }}
+          />
+
+          <DeltaTable
+            title={`🟠 Float Erosion (${comparisonResults.floatErosion.length})`}
+            emptyText="No float erosion detected."
+            rows={comparisonResults.floatErosion}
+            issueType="Float Erosion"
+            createIssueFromDelta={createIssueFromDelta}
+            milestones={milestones}
+            selectedMilestones={selectedMilestones}
+            setSelectedMilestones={setSelectedMilestones}
+            getRowKey={getRowKey}
+            columns={[
+              ["activityId", "ID"],
+              ["activityName", "Activity"],
+              ["previousFloat", "Previous Float"],
+              ["currentFloat", "Current Float"],
+              ["deltaFloat", "Float Lost"],
+            ]}
+          />
+
+          <DeltaTable
+            title={`🔴 New Critical Activities (${comparisonResults.newCriticalActivities.length})`}
+            emptyText="No new critical activities detected."
+            rows={comparisonResults.newCriticalActivities}
+            issueType="New Critical Activity"
+            createIssueFromDelta={createIssueFromDelta}
+            milestones={milestones}
+            selectedMilestones={selectedMilestones}
+            setSelectedMilestones={setSelectedMilestones}
+            getRowKey={getRowKey}
+            columns={[
+              ["activityId", "ID"],
+              ["activityName", "Activity"],
+              ["currentFloat", "Float"],
+            ]}
+          />
+
+          <DeltaTable
+            title={`🟢 Recovered Activities (${comparisonResults.recoveredActivities.length})`}
+            emptyText="No recovered activities detected."
+            rows={comparisonResults.recoveredActivities}
+            issueType="Recovered Activity"
+            createIssueFromDelta={createIssueFromDelta}
+            milestones={milestones}
+            selectedMilestones={selectedMilestones}
+            setSelectedMilestones={setSelectedMilestones}
+            getRowKey={getRowKey}
+            columns={[
+              ["activityId", "ID"],
+              ["activityName", "Activity"],
+              ["deltaDays", "Recovery"],
+            ]}
+            suffixByKey={{ deltaDays: " days" }}
+          />
+        </>
+      )}
+    </div>
+  );
+}
+
+function DeltaTable({
+  title,
+  emptyText,
+  rows,
+  columns,
+  issueType,
+  createIssueFromDelta,
+  milestones,
+  selectedMilestones,
+  setSelectedMilestones,
+  getRowKey,
+  suffixByKey = {},
+}) {
+  return (
+    <div className="card">
+      <h3>{title}</h3>
+
+      {rows.length === 0 ? (
+        <p>{emptyText}</p>
+      ) : (
+        <table className="data-table">
+          <thead>
+            <tr>
+              {columns.map(([key, label]) => (
+                <th key={key}>{label}</th>
+              ))}
+              <th>Linked Milestone</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {rows.map((activity) => {
+              const rowKey = getRowKey(activity, issueType);
+
+              return (
+                <tr key={rowKey}>
+                  {columns.map(([key]) => (
+                    <td key={key}>
+                      {activity[key]}
+                      {activity[key] !== undefined && suffixByKey[key]
+                        ? suffixByKey[key]
+                        : ""}
+                    </td>
+                  ))}
+
+                  <td>
+                    <select
+                      value={selectedMilestones[rowKey] || ""}
+                      onChange={(e) =>
+                        setSelectedMilestones({
+                          ...selectedMilestones,
+                          [rowKey]: e.target.value,
+                        })
+                      }
+                    >
+                      <option value="">Unassigned</option>
+
+                      {milestones
+                        .filter((milestone) => !milestone.archived)
+                        .map((milestone) => (
+                          <option key={milestone.id} value={milestone.name}>
+                            {milestone.name}
+                          </option>
+                        ))}
+                    </select>
+                  </td>
+
+                  <td>
+                    <button
+                      type="button"
+                      className="small-button"
+                      onClick={() => createIssueFromDelta(activity, issueType)}
+                    >
+                      Create Issue
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
+export default ScheduleIntelligence;

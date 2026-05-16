@@ -1,0 +1,167 @@
+export function normalizeScheduleRow(row) {
+  return {
+    activityId:
+      row["Activity ID"] ||
+      row["ActivityId"] ||
+      row["ID"] ||
+      row["activityId"] ||
+      "",
+    activityName:
+      row["Activity Name"] ||
+      row["ActivityName"] ||
+      row["Name"] ||
+      row["activityName"] ||
+      "",
+    start: row["Start"] || row["start"] || "",
+    finish: row["Finish"] || row["finish"] || "",
+    totalFloat:
+      row["Total Float"] ||
+      row["TotalFloat"] ||
+      row["Float"] ||
+      row["totalFloat"] ||
+      "",
+    critical:
+      row["Critical"] ||
+      row["critical"] ||
+      row["Is Critical"] ||
+      row["isCritical"] ||
+      "",
+  };
+}
+
+export function daysBetweenDates(oldDate, newDate) {
+  if (!oldDate || !newDate) return 0;
+
+  const oldTime = new Date(oldDate).getTime();
+  const newTime = new Date(newDate).getTime();
+
+  if (Number.isNaN(oldTime) || Number.isNaN(newTime)) return 0;
+
+  return Math.round((newTime - oldTime) / (1000 * 60 * 60 * 24));
+}
+
+export function parseFloatValue(value) {
+  if (value === null || value === undefined || value === "") return null;
+
+  const cleaned = String(value).replace(/[^\d.-]/g, "");
+  const parsed = Number(cleaned);
+
+  return Number.isNaN(parsed) ? null : parsed;
+}
+
+export function isCriticalActivity(activity) {
+  const critical = String(activity.critical || "").toLowerCase();
+  const floatValue = parseFloatValue(activity.totalFloat);
+
+  return (
+    critical === "yes" ||
+    critical === "true" ||
+    critical === "critical" ||
+    floatValue === 0 ||
+    floatValue < 0
+  );
+}
+
+export function compareScheduleSnapshots(previousRows = [], currentRows = []) {
+  const previousMap = new Map();
+  const currentMap = new Map();
+
+  previousRows.forEach((row) => {
+    if (row.activityId) previousMap.set(row.activityId, row);
+  });
+
+  currentRows.forEach((row) => {
+    if (row.activityId) currentMap.set(row.activityId, row);
+  });
+
+  const slippedActivities = [];
+  const recoveredActivities = [];
+  const floatErosion = [];
+  const floatRecovery = [];
+  const newCriticalActivities = [];
+  const newActivities = [];
+  const removedActivities = [];
+
+  currentRows.forEach((current) => {
+    const previous = previousMap.get(current.activityId);
+
+    if (!previous) {
+      newActivities.push(current);
+
+      if (isCriticalActivity(current)) {
+        newCriticalActivities.push(current);
+      }
+
+      return;
+    }
+
+    const finishDelta = daysBetweenDates(previous.finish, current.finish);
+
+    if (finishDelta > 0) {
+      slippedActivities.push({
+        ...current,
+        previousFinish: previous.finish,
+        currentFinish: current.finish,
+        deltaDays: finishDelta,
+      });
+    }
+
+    if (finishDelta < 0) {
+      recoveredActivities.push({
+        ...current,
+        previousFinish: previous.finish,
+        currentFinish: current.finish,
+        deltaDays: Math.abs(finishDelta),
+      });
+    }
+
+    const previousFloat = parseFloatValue(previous.totalFloat);
+    const currentFloat = parseFloatValue(current.totalFloat);
+
+    if (previousFloat !== null && currentFloat !== null) {
+      const floatDelta = currentFloat - previousFloat;
+
+      if (floatDelta < 0) {
+        floatErosion.push({
+          ...current,
+          previousFloat,
+          currentFloat,
+          deltaFloat: Math.abs(floatDelta),
+        });
+      }
+
+      if (floatDelta > 0) {
+        floatRecovery.push({
+          ...current,
+          previousFloat,
+          currentFloat,
+          deltaFloat,
+        });
+      }
+    }
+
+    if (!isCriticalActivity(previous) && isCriticalActivity(current)) {
+      newCriticalActivities.push({
+        ...current,
+        previousFloat: previous.totalFloat,
+        currentFloat: current.totalFloat,
+      });
+    }
+  });
+
+  previousRows.forEach((previous) => {
+    if (!currentMap.has(previous.activityId)) {
+      removedActivities.push(previous);
+    }
+  });
+
+  return {
+    slippedActivities,
+    recoveredActivities,
+    floatErosion,
+    floatRecovery,
+    newCriticalActivities,
+    newActivities,
+    removedActivities,
+  };
+}
