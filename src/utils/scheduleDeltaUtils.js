@@ -135,7 +135,7 @@ export function compareScheduleSnapshots(previousRows = [], currentRows = []) {
           ...current,
           previousFloat,
           currentFloat,
-          deltaFloat,
+          deltaFloat: Math.abs(floatDelta),
         });
       }
     }
