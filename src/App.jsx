@@ -1122,22 +1122,22 @@ function importIssuesFromSchedule(importedIssues) {
     renderNoProjectSelected()
   ))}
         {activePage === "Schedule Milestones" &&
-          (selectedProject ? (
-            <ScheduleMilestones
-  project={currentProjectData.name}
-  milestones={currentProjectData.milestones || []}
-  milestoneForm={milestoneForm}
-  setMilestoneForm={setMilestoneForm}
-  addMilestone={addMilestone}
-  updateMilestoneStatus={updateMilestoneStatus}
-  archiveMilestone={archiveMilestone}
-  permissions={permissions}
-  issues={currentProjectData.issues || []}
-  updateCurrentProjectData={updateCurrentProjectData}
-/>
-          ) : (
-            renderNoProjectSelected()
-          ))}
+  (selectedProject ? (
+    <ScheduleMilestones
+      project={selectedProject.name}
+      milestones={milestones || []}
+      milestoneForm={milestoneForm}
+      setMilestoneForm={setMilestoneForm}
+      addMilestone={addMilestone}
+      updateMilestoneStatus={updateMilestoneStatus}
+      archiveMilestone={archiveMilestone}
+      permissions={permissions}
+      issues={issues || []}
+      updateCurrentProjectData={updateCurrentProjectData}
+    />
+  ) : (
+    renderNoProjectSelected()
+  ))}
 
         {activePage === "Constraint Board" &&
           (selectedProject ? (
