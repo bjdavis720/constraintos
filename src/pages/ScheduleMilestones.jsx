@@ -7,6 +7,8 @@ function ScheduleMilestones({
   updateMilestoneStatus,
   archiveMilestone,
   permissions,
+  issues = [],
+  updateCurrentProjectData,
 }) {
   const activeMilestones = milestones.filter((milestone) => !milestone.archived);
   const archivedMilestones = milestones.filter((milestone) => milestone.archived);
@@ -14,6 +16,40 @@ function ScheduleMilestones({
   function handleChange(e) {
     const { name, value } = e.target;
     setMilestoneForm({ ...milestoneForm, [name]: value });
+  }
+
+  function createIssueFromMilestone(milestone) {
+    const alreadyExists = issues.some(
+      (issue) =>
+        issue.source === "Schedule Milestones" &&
+        issue.milestoneId === milestone.id &&
+        issue.status !== "Closed"
+    );
+
+    if (alreadyExists) {
+      alert("An open issue already exists for this milestone.");
+      return;
+    }
+
+    const newIssue = {
+      id: Date.now(),
+      title: `Milestone Issue: ${milestone.name}`,
+      source: "Schedule Milestones",
+      milestoneId: milestone.id,
+      milestone: milestone.name,
+      status: "Open",
+      manuallyEscalated: milestone.status === "Off Track",
+      createdAt: new Date().toISOString(),
+      notes: `Issue created from Schedule Milestone: ${milestone.name}.  Target date: ${
+        milestone.due || "Not set"
+      }.  Current milestone status: ${milestone.status || "Not set"}.`,
+    };
+
+    updateCurrentProjectData({
+      issues: [...issues, newIssue],
+    });
+
+    alert("Milestone issue created.");
   }
 
   return (
@@ -96,35 +132,53 @@ function ScheduleMilestones({
             )}
 
             {[...activeMilestones]
-  .sort((a, b) => new Date(a.due) - new Date(b.due))
-  .map((milestone) => (
-              <tr key={milestone.id}>
-                <td>{milestone.name}</td>
-                <td>{milestone.due}</td>
-                <td>
-                  <button
-                    type="button"
-                    className={`status-pill-button ${milestone.status
-                      .replaceAll(" ", "-")
-                      .toLowerCase()}`}
-                    onClick={() => updateMilestoneStatus(milestone.id)}
-                    disabled={!permissions.canAddMilestone}
-                  >
-                    {milestone.status}
-                  </button>
-                </td>
-                <td>
-                  <button
-                    type="button"
-                    className="secondary-button small-button"
-                    onClick={() => archiveMilestone(milestone.id)}
-                    disabled={!permissions.canArchiveMilestone}
-                  >
-                    Archive
-                  </button>
-                </td>
-              </tr>
-            ))}
+              .sort((a, b) => new Date(a.due) - new Date(b.due))
+              .map((milestone) => {
+                const issueAlreadyExists = issues.some(
+                  (issue) =>
+                    issue.source === "Schedule Milestones" &&
+                    issue.milestoneId === milestone.id &&
+                    issue.status !== "Closed"
+                );
+
+                return (
+                  <tr key={milestone.id}>
+                    <td>{milestone.name}</td>
+                    <td>{milestone.due}</td>
+                    <td>
+                      <button
+                        type="button"
+                        className={`status-pill-button ${milestone.status
+                          .replaceAll(" ", "-")
+                          .toLowerCase()}`}
+                        onClick={() => updateMilestoneStatus(milestone.id)}
+                        disabled={!permissions.canAddMilestone}
+                      >
+                        {milestone.status}
+                      </button>
+                    </td>
+                    <td>
+                      <button
+                        type="button"
+                        className="secondary-button small-button"
+                        onClick={() => createIssueFromMilestone(milestone)}
+                        disabled={issueAlreadyExists}
+                      >
+                        {issueAlreadyExists ? "Issue Created" : "Create Issue"}
+                      </button>
+
+                      <button
+                        type="button"
+                        className="secondary-button small-button"
+                        onClick={() => archiveMilestone(milestone.id)}
+                        disabled={!permissions.canArchiveMilestone}
+                      >
+                        Archive
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
           </tbody>
         </table>
       </div>

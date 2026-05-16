@@ -1124,16 +1124,17 @@ function importIssuesFromSchedule(importedIssues) {
         {activePage === "Schedule Milestones" &&
           (selectedProject ? (
             <ScheduleMilestones
-              project={projectName}
-              milestones={milestones}
-              milestoneForm={milestoneForm}
-              setMilestoneForm={setMilestoneForm}
-              addMilestone={addMilestone}
-              updateMilestoneStatus={updateMilestoneStatus}
-              archiveMilestone={archiveMilestone}
-              permissions={permissions}
-              dashboardFilter={dashboardFilter}
-            />
+  project={currentProjectData.name}
+  milestones={currentProjectData.milestones || []}
+  milestoneForm={milestoneForm}
+  setMilestoneForm={setMilestoneForm}
+  addMilestone={addMilestone}
+  updateMilestoneStatus={updateMilestoneStatus}
+  archiveMilestone={archiveMilestone}
+  permissions={permissions}
+  issues={currentProjectData.issues || []}
+  updateCurrentProjectData={updateCurrentProjectData}
+/>
           ) : (
             renderNoProjectSelected()
           ))}
