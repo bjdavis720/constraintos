@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import {
   normalizeScheduleRow,
@@ -46,6 +46,17 @@ function ScheduleIntelligence({
       : null;
 
   const latestActivities = latestSnapshot?.rows || [];
+  useEffect(() => {
+  if (scheduleSnapshots.length >= 2) {
+    const previous = scheduleSnapshots[scheduleSnapshots.length - 2];
+    const current = scheduleSnapshots[scheduleSnapshots.length - 1];
+
+    const results = compareScheduleSnapshots(previous.rows || [], current.rows || []);
+    setComparisonResults(results);
+  } else {
+    setComparisonResults(null);
+  }
+}, [scheduleSnapshots]);
 
   const filteredLatestActivities = latestActivities
   .filter((activity) => {
