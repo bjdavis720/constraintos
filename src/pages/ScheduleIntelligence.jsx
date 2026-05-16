@@ -82,14 +82,18 @@ function ScheduleIntelligence({
 
   const filteredLatestActivities = latestActivities
     .filter((activity) => {
-      if (activityFilter === "critical") return isCriticalActivity(activity);
+      if (activityFilter === "critical") {
+        return isCriticalActivity(activity);
+      }
 
       if (activityFilter === "milestones") {
         return (
           String(activity.activityName || "")
             .toLowerCase()
             .includes("milestone") ||
-          String(activity.activityId || "").toLowerCase().includes("mile")
+          String(activity.activityId || "")
+            .toLowerCase()
+            .includes("mile")
         );
       }
 
@@ -298,115 +302,39 @@ function ScheduleIntelligence({
                 <strong>{comparisonResults.slippedActivities.length}</strong>
                 <span>Slipped</span>
               </div>
+
               <div className="mini-metric">
                 <strong>{comparisonResults.recoveredActivities.length}</strong>
                 <span>Recovered</span>
               </div>
+
               <div className="mini-metric">
                 <strong>{comparisonResults.floatErosion.length}</strong>
                 <span>Float Erosion</span>
               </div>
+
               <div className="mini-metric">
                 <strong>{comparisonResults.floatRecovery.length}</strong>
                 <span>Float Recovery</span>
               </div>
+
               <div className="mini-metric">
                 <strong>{comparisonResults.newCriticalActivities.length}</strong>
                 <span>New Critical</span>
               </div>
+
               <div className="mini-metric">
                 <strong>{comparisonResults.newActivities.length}</strong>
                 <span>New Activities</span>
               </div>
+
               <div className="mini-metric">
                 <strong>{comparisonResults.removedActivities.length}</strong>
                 <span>Removed</span>
               </div>
             </div>
           </div>
-        </>
-      )}
 
-      {latestSnapshot && (
-        <div className="card">
-          <div className="section-header-row">
-            <h3>Current Schedule Activities</h3>
-
-            <select
-              value={activityFilter}
-              onChange={(e) => setActivityFilter(e.target.value)}
-            >
-              <option value="critical">Critical / Zero Float</option>
-              <option value="milestones">Milestone-Like Activities</option>
-              <option value="all">All Activities</option>
-            </select>
-          </div>
-
-          <p>
-            Latest snapshot: <strong>{latestSnapshot.fileName}</strong>
-          </p>
-
-          {filteredLatestActivities.length === 0 ? (
-            <p>No activities match this filter.</p>
-          ) : (
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Activity</th>
-                  <th>Start</th>
-                  <th>Finish</th>
-                  <th>Total Float</th>
-                  <th>Critical</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {filteredLatestActivities.map((activity) => {
-                  const alreadyMilestone = milestones.some(
-                    (milestone) =>
-                      milestone.sourceActivityId === activity.activityId ||
-                      milestone.name === activity.activityName
-                  );
-
-                  return (
-                    <tr key={`current-${activity.activityId}`}>
-                      <td>{activity.activityId}</td>
-                      <td>{activity.activityName}</td>
-                      <td>{activity.start || "-"}</td>
-                      <td>{activity.finish || "-"}</td>
-                      <td>{activity.totalFloat || "-"}</td>
-                      <td>{isCriticalActivity(activity) ? "Yes" : "No"}</td>
-                      <td>
-                        <button
-                          type="button"
-                          className="secondary-button small-button"
-                          onClick={() => addCurrentActivityToMilestones(activity)}
-                          disabled={alreadyMilestone}
-                        >
-                          {alreadyMilestone ? "Already Added" : "Add Milestone"}
-                        </button>
-
-                        <button
-                          type="button"
-                          className="secondary-button small-button"
-                          onClick={() => createIssueFromCurrentActivity(activity)}
-                        >
-                          Create Issue
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          )}
-        </div>
-      )}
-
-      {comparisonResults && (
-        <>
           <DeltaTable
             sectionKey="slippedActivities"
             collapsed={collapsedSections.slippedActivities}
@@ -496,8 +424,7 @@ function ScheduleIntelligence({
               ["deltaFloat", "Float Gained"],
             ]}
           />
-
-          <DeltaTable
+                   <DeltaTable
             sectionKey="newCriticalActivities"
             collapsed={collapsedSections.newCriticalActivities}
             toggleSection={toggleSection}
@@ -560,8 +487,93 @@ function ScheduleIntelligence({
               ["finish", "Finish"],
               ["totalFloat", "Total Float"],
             ]}
-          />
+          /> 
         </>
+      )}
+
+      {latestSnapshot && (
+        <div className="card">
+          <div className="section-header-row">
+            <h3>Current Schedule Activities</h3>
+
+            <select
+              value={activityFilter}
+              onChange={(e) => setActivityFilter(e.target.value)}
+            >
+              <option value="critical">Critical / Zero Float</option>
+              <option value="milestones">Milestone-Like Activities</option>
+              <option value="all">All Activities</option>
+            </select>
+          </div>
+
+          <p>
+            Latest snapshot: <strong>{latestSnapshot.fileName}</strong>
+          </p>
+
+          {filteredLatestActivities.length === 0 ? (
+            <p>No activities match this filter.</p>
+          ) : (
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Activity</th>
+                  <th>Start</th>
+                  <th>Finish</th>
+                  <th>Total Float</th>
+                  <th>Critical</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {filteredLatestActivities.map((activity) => {
+                  const alreadyMilestone = milestones.some(
+                    (milestone) =>
+                      milestone.sourceActivityId === activity.activityId ||
+                      milestone.name === activity.activityName
+                  );
+
+                  return (
+                    <tr key={`current-${activity.activityId}`}>
+                      <td>{activity.activityId}</td>
+                      <td>{activity.activityName}</td>
+                      <td>{activity.start || "-"}</td>
+                      <td>{activity.finish || "-"}</td>
+                      <td>{activity.totalFloat || "-"}</td>
+                      <td>{isCriticalActivity(activity) ? "Yes" : "No"}</td>
+
+                      <td>
+                        <button
+                          type="button"
+                          className="secondary-button small-button"
+                          onClick={() =>
+                            addCurrentActivityToMilestones(activity)
+                          }
+                          disabled={alreadyMilestone}
+                        >
+                          {alreadyMilestone
+                            ? "Already Added"
+                            : "Add Milestone"}
+                        </button>
+
+                        <button
+                          type="button"
+                          className="secondary-button small-button"
+                          onClick={() =>
+                            createIssueFromCurrentActivity(activity)
+                          }
+                        >
+                          Create Issue
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
       )}
     </div>
   );
