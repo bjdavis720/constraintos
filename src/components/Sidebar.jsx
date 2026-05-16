@@ -13,20 +13,25 @@ function Sidebar({
     {
       label: "WORKFLOW",
       items: [
-  "Schedule Intelligence",
-  "Schedule Milestones",  
-  "Constraint Board",
-  "Issues Board",
-  "To-Dos",
-],
+        "Schedule Intelligence",
+        "Schedule Milestones",
+        "Constraint Board",
+        "Issues Board",
+        "To-Dos",
+      ],
     },
   ];
 
   return (
     <aside className="sidebar">
-      <div className="sidebar-card">
-        <img src="/logo.png" alt="ConstraintOS" className="logo" />
-        <p>From Schedule Variance to Action</p>
+      <div className="sidebar-card sidebar-brand-card">
+        <img src="/logo.png" alt="ConstraintOS" className="logo sidebar-logo" />
+
+        <h1 className="sidebar-brand-title">ConstraintOS</h1>
+
+        <p className="sidebar-brand-subtitle">
+          Operational Constraint Intelligence
+        </p>
       </div>
 
       <button
@@ -64,9 +69,7 @@ function Sidebar({
                 <button
                   type="button"
                   key={item}
-                  className={
-                    activePage === item ? "nav-link active" : "nav-link"
-                  }
+                  className={activePage === item ? "nav-link active" : "nav-link"}
                   onClick={() => setActivePage(item)}
                 >
                   {item}

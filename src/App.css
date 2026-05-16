@@ -1017,3 +1017,36 @@ body {
   color: #526173;
   font-size: 0.85rem;
 }
+.sidebar-brand-card {
+  padding: 34px 18px 24px;
+  text-align: center;
+  border-radius: 22px;
+  min-height: 250px;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebar-logo {
+  width: 145px;
+  max-width: 100%;
+  height: auto;
+  margin-bottom: 28px;
+}
+
+.sidebar-brand-title {
+  display: none;
+}
+
+.sidebar-brand-subtitle {
+  margin: 0;
+  max-width: 160px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #5f6f89;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1.45;
+}
