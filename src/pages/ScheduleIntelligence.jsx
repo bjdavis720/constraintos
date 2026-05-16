@@ -40,47 +40,67 @@ function ScheduleIntelligence({
   const [selectedMilestones, setSelectedMilestones] = useState({});
   const [activityFilter, setActivityFilter] = useState("critical");
 
+  const [collapsedSections, setCollapsedSections] = useState({
+    slippedActivities: false,
+    recoveredActivities: true,
+    floatErosion: true,
+    floatRecovery: true,
+    newCriticalActivities: true,
+    newActivities: true,
+    removedActivities: true,
+  });
+
+  function toggleSection(sectionKey) {
+    setCollapsedSections((prev) => ({
+      ...prev,
+      [sectionKey]: !prev[sectionKey],
+    }));
+  }
+
   const latestSnapshot =
     scheduleSnapshots.length > 0
       ? scheduleSnapshots[scheduleSnapshots.length - 1]
       : null;
 
   const latestActivities = latestSnapshot?.rows || [];
-  useEffect(() => {
-  if (scheduleSnapshots.length >= 2) {
-    const previous = scheduleSnapshots[scheduleSnapshots.length - 2];
-    const current = scheduleSnapshots[scheduleSnapshots.length - 1];
 
-    const results = compareScheduleSnapshots(previous.rows || [], current.rows || []);
-    setComparisonResults(results);
-  } else {
-    setComparisonResults(null);
-  }
-}, [scheduleSnapshots]);
+  useEffect(() => {
+    if (scheduleSnapshots.length >= 2) {
+      const previous = scheduleSnapshots[scheduleSnapshots.length - 2];
+      const current = scheduleSnapshots[scheduleSnapshots.length - 1];
+
+      const results = compareScheduleSnapshots(
+        previous.rows || [],
+        current.rows || []
+      );
+
+      setComparisonResults(results);
+    } else {
+      setComparisonResults(null);
+    }
+  }, [scheduleSnapshots]);
 
   const filteredLatestActivities = latestActivities
-  .filter((activity) => {
-    if (activityFilter === "critical") return isCriticalActivity(activity);
+    .filter((activity) => {
+      if (activityFilter === "critical") return isCriticalActivity(activity);
 
-    if (activityFilter === "milestones") {
-      return (
-        String(activity.activityName || "")
-          .toLowerCase()
-          .includes("milestone") ||
-        String(activity.activityId || "")
-          .toLowerCase()
-          .includes("mile")
-      );
-    }
+      if (activityFilter === "milestones") {
+        return (
+          String(activity.activityName || "")
+            .toLowerCase()
+            .includes("milestone") ||
+          String(activity.activityId || "").toLowerCase().includes("mile")
+        );
+      }
 
-    return true;
-  })
-  .sort((a, b) => {
-    const dateA = a.finish ? new Date(a.finish) : new Date(9999, 0, 1);
-    const dateB = b.finish ? new Date(b.finish) : new Date(9999, 0, 1);
+      return true;
+    })
+    .sort((a, b) => {
+      const dateA = a.finish ? new Date(a.finish) : new Date(9999, 0, 1);
+      const dateB = b.finish ? new Date(b.finish) : new Date(9999, 0, 1);
 
-    return dateA - dateB;
-  });
+      return dateA - dateB;
+    });
 
   function getRowKey(activity, issueType) {
     return `${issueType}-${activity.activityId}`;
@@ -144,6 +164,10 @@ function ScheduleIntelligence({
       return `Schedule Intelligence identified float erosion. Previous float: ${activity.previousFloat}. Current float: ${activity.currentFloat}.${milestoneText}`;
     }
 
+    if (issueType === "Float Recovery") {
+      return `Schedule Intelligence identified float recovery. Previous float: ${activity.previousFloat}. Current float: ${activity.currentFloat}.${milestoneText}`;
+    }
+
     if (issueType === "New Critical Activity") {
       return `Schedule Intelligence identified this activity as newly critical. Current float: ${
         activity.currentFloat ?? activity.totalFloat
@@ -178,9 +202,7 @@ function ScheduleIntelligence({
     const text = await file.text();
     const fileName = file.name.toLowerCase();
 
-    const parsedRows = fileName.endsWith(".xer")
-      ? parseXER(text)
-      : parseCSV(text);
+    const parsedRows = fileName.endsWith(".xer") ? parseXER(text) : parseCSV(text);
 
     if (parsedRows.length === 0) {
       alert("No schedule activities were found in this file.");
@@ -222,8 +244,8 @@ function ScheduleIntelligence({
         <input type="file" accept=".csv,.xer" onChange={handleScheduleUpload} />
 
         <p style={{ marginTop: "10px" }}>
-          Upload CSV (see template) or XER schedule exports to compare milestone
-          movement, float erosion, and critical path changes.
+          Upload CSV or XER schedule exports to compare milestone movement,
+          float erosion, and critical path changes.
         </p>
       </div>
 
@@ -301,41 +323,41 @@ function ScheduleIntelligence({
 
               <tbody>
                 {filteredLatestActivities.map((activity) => {
-  const alreadyMilestone = milestones.some(
-    (milestone) =>
-      milestone.sourceActivityId === activity.activityId ||
-      milestone.name === activity.activityName
-  );
+                  const alreadyMilestone = milestones.some(
+                    (milestone) =>
+                      milestone.sourceActivityId === activity.activityId ||
+                      milestone.name === activity.activityName
+                  );
 
-  return (
-    <tr key={`current-${activity.activityId}`}>
-      <td>{activity.activityId}</td>
-      <td>{activity.activityName}</td>
-      <td>{activity.start || "-"}</td>
-      <td>{activity.finish || "-"}</td>
-      <td>{activity.totalFloat || "-"}</td>
-      <td>{isCriticalActivity(activity) ? "Yes" : "No"}</td>
-      <td>
-        <button
-  type="button"
-  className="secondary-button small-button"
-  onClick={() => addCurrentActivityToMilestones(activity)}
-  disabled={alreadyMilestone}
->
-  {alreadyMilestone ? "Already Added" : "Add Milestone"}
-</button>
+                  return (
+                    <tr key={`current-${activity.activityId}`}>
+                      <td>{activity.activityId}</td>
+                      <td>{activity.activityName}</td>
+                      <td>{activity.start || "-"}</td>
+                      <td>{activity.finish || "-"}</td>
+                      <td>{activity.totalFloat || "-"}</td>
+                      <td>{isCriticalActivity(activity) ? "Yes" : "No"}</td>
+                      <td>
+                        <button
+                          type="button"
+                          className="secondary-button small-button"
+                          onClick={() => addCurrentActivityToMilestones(activity)}
+                          disabled={alreadyMilestone}
+                        >
+                          {alreadyMilestone ? "Already Added" : "Add Milestone"}
+                        </button>
 
-        <button
-          type="button"
-          className="secondary-button small-button"
-          onClick={() => createIssueFromCurrentActivity(activity)}
-        >
-          Create Issue
-        </button>
-      </td>
-    </tr>
-  );
-})}
+                        <button
+                          type="button"
+                          className="secondary-button small-button"
+                          onClick={() => createIssueFromCurrentActivity(activity)}
+                        >
+                          Create Issue
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}
@@ -344,7 +366,45 @@ function ScheduleIntelligence({
 
       {comparisonResults && (
         <>
+          <div className="card">
+            <h3>Schedule Delta Summary</h3>
+
+            <div className="metric-grid">
+              <div className="mini-metric">
+                <strong>{comparisonResults.slippedActivities.length}</strong>
+                <span>Slipped</span>
+              </div>
+              <div className="mini-metric">
+                <strong>{comparisonResults.recoveredActivities.length}</strong>
+                <span>Recovered</span>
+              </div>
+              <div className="mini-metric">
+                <strong>{comparisonResults.floatErosion.length}</strong>
+                <span>Float Erosion</span>
+              </div>
+              <div className="mini-metric">
+                <strong>{comparisonResults.floatRecovery.length}</strong>
+                <span>Float Recovery</span>
+              </div>
+              <div className="mini-metric">
+                <strong>{comparisonResults.newCriticalActivities.length}</strong>
+                <span>New Critical</span>
+              </div>
+              <div className="mini-metric">
+                <strong>{comparisonResults.newActivities.length}</strong>
+                <span>New Activities</span>
+              </div>
+              <div className="mini-metric">
+                <strong>{comparisonResults.removedActivities.length}</strong>
+                <span>Removed</span>
+              </div>
+            </div>
+          </div>
+
           <DeltaTable
+            sectionKey="slippedActivities"
+            collapsed={collapsedSections.slippedActivities}
+            toggleSection={toggleSection}
             title={`🔴 Slipped Activities (${comparisonResults.slippedActivities.length})`}
             emptyText="No slipped activities detected."
             rows={comparisonResults.slippedActivities}
@@ -365,6 +425,32 @@ function ScheduleIntelligence({
           />
 
           <DeltaTable
+            sectionKey="recoveredActivities"
+            collapsed={collapsedSections.recoveredActivities}
+            toggleSection={toggleSection}
+            title={`🟢 Recovered Activities (${comparisonResults.recoveredActivities.length})`}
+            emptyText="No recovered activities detected."
+            rows={comparisonResults.recoveredActivities}
+            issueType="Recovered Activity"
+            createIssueFromDelta={createIssueFromDelta}
+            milestones={milestones}
+            selectedMilestones={selectedMilestones}
+            setSelectedMilestones={setSelectedMilestones}
+            getRowKey={getRowKey}
+            columns={[
+              ["activityId", "ID"],
+              ["activityName", "Activity"],
+              ["previousFinish", "Previous Finish"],
+              ["currentFinish", "Current Finish"],
+              ["deltaDays", "Recovery"],
+            ]}
+            suffixByKey={{ deltaDays: " days" }}
+          />
+
+          <DeltaTable
+            sectionKey="floatErosion"
+            collapsed={collapsedSections.floatErosion}
+            toggleSection={toggleSection}
             title={`🟠 Float Erosion (${comparisonResults.floatErosion.length})`}
             emptyText="No float erosion detected."
             rows={comparisonResults.floatErosion}
@@ -384,6 +470,31 @@ function ScheduleIntelligence({
           />
 
           <DeltaTable
+            sectionKey="floatRecovery"
+            collapsed={collapsedSections.floatRecovery}
+            toggleSection={toggleSection}
+            title={`🟢 Float Recovery (${comparisonResults.floatRecovery.length})`}
+            emptyText="No float recovery detected."
+            rows={comparisonResults.floatRecovery}
+            issueType="Float Recovery"
+            createIssueFromDelta={createIssueFromDelta}
+            milestones={milestones}
+            selectedMilestones={selectedMilestones}
+            setSelectedMilestones={setSelectedMilestones}
+            getRowKey={getRowKey}
+            columns={[
+              ["activityId", "ID"],
+              ["activityName", "Activity"],
+              ["previousFloat", "Previous Float"],
+              ["currentFloat", "Current Float"],
+              ["deltaFloat", "Float Gained"],
+            ]}
+          />
+
+          <DeltaTable
+            sectionKey="newCriticalActivities"
+            collapsed={collapsedSections.newCriticalActivities}
+            toggleSection={toggleSection}
             title={`🔴 New Critical Activities (${comparisonResults.newCriticalActivities.length})`}
             emptyText="No new critical activities detected."
             rows={comparisonResults.newCriticalActivities}
@@ -397,14 +508,18 @@ function ScheduleIntelligence({
               ["activityId", "ID"],
               ["activityName", "Activity"],
               ["currentFloat", "Float"],
+              ["finish", "Finish"],
             ]}
           />
 
           <DeltaTable
-            title={`🟢 Recovered Activities (${comparisonResults.recoveredActivities.length})`}
-            emptyText="No recovered activities detected."
-            rows={comparisonResults.recoveredActivities}
-            issueType="Recovered Activity"
+            sectionKey="newActivities"
+            collapsed={collapsedSections.newActivities}
+            toggleSection={toggleSection}
+            title={`🆕 New Activities (${comparisonResults.newActivities.length})`}
+            emptyText="No new activities detected."
+            rows={comparisonResults.newActivities}
+            issueType="New Activity"
             createIssueFromDelta={createIssueFromDelta}
             milestones={milestones}
             selectedMilestones={selectedMilestones}
@@ -413,9 +528,32 @@ function ScheduleIntelligence({
             columns={[
               ["activityId", "ID"],
               ["activityName", "Activity"],
-              ["deltaDays", "Recovery"],
+              ["start", "Start"],
+              ["finish", "Finish"],
+              ["totalFloat", "Total Float"],
             ]}
-            suffixByKey={{ deltaDays: " days" }}
+          />
+
+          <DeltaTable
+            sectionKey="removedActivities"
+            collapsed={collapsedSections.removedActivities}
+            toggleSection={toggleSection}
+            title={`⚪ Removed Activities (${comparisonResults.removedActivities.length})`}
+            emptyText="No removed activities detected."
+            rows={comparisonResults.removedActivities}
+            issueType="Removed Activity"
+            createIssueFromDelta={createIssueFromDelta}
+            milestones={milestones}
+            selectedMilestones={selectedMilestones}
+            setSelectedMilestones={setSelectedMilestones}
+            getRowKey={getRowKey}
+            columns={[
+              ["activityId", "ID"],
+              ["activityName", "Activity"],
+              ["start", "Start"],
+              ["finish", "Finish"],
+              ["totalFloat", "Total Float"],
+            ]}
           />
         </>
       )}
@@ -424,6 +562,9 @@ function ScheduleIntelligence({
 }
 
 function DeltaTable({
+  sectionKey,
+  collapsed,
+  toggleSection,
   title,
   emptyText,
   rows,
@@ -438,74 +579,88 @@ function DeltaTable({
 }) {
   return (
     <div className="card">
-      <h3>{title}</h3>
+      <div className="section-header-row">
+        <h3>{title}</h3>
 
-      {rows.length === 0 ? (
-        <p>{emptyText}</p>
-      ) : (
-        <table className="data-table">
-          <thead>
-            <tr>
-              {columns.map(([key, label]) => (
-                <th key={key}>{label}</th>
-              ))}
-              <th>Linked Milestone</th>
-              <th>Action</th>
-            </tr>
-          </thead>
+        <button
+          type="button"
+          className="secondary-button small-button"
+          onClick={() => toggleSection(sectionKey)}
+        >
+          {collapsed ? "Expand" : "Collapse"}
+        </button>
+      </div>
 
-          <tbody>
-            {rows.map((activity) => {
-              const rowKey = getRowKey(activity, issueType);
+      {!collapsed &&
+        (rows.length === 0 ? (
+          <p>{emptyText}</p>
+        ) : (
+          <table className="data-table">
+            <thead>
+              <tr>
+                {columns.map(([key, label]) => (
+                  <th key={key}>{label}</th>
+                ))}
+                <th>Linked Milestone</th>
+                <th>Action</th>
+              </tr>
+            </thead>
 
-              return (
-                <tr key={rowKey}>
-                  {columns.map(([key]) => (
-                    <td key={key}>
-                      {activity[key]}
-                      {activity[key] !== undefined && suffixByKey[key]
-                        ? suffixByKey[key]
-                        : ""}
+            <tbody>
+              {rows.map((activity, index) => {
+                const rowKey =
+                  activity.activityId && activity.activityId !== ""
+                    ? getRowKey(activity, issueType)
+                    : `${issueType}-${index}`;
+
+                return (
+                  <tr key={rowKey}>
+                    {columns.map(([key]) => (
+                      <td key={key}>
+                        {activity[key] ?? "-"}
+                        {activity[key] !== undefined && suffixByKey[key]
+                          ? suffixByKey[key]
+                          : ""}
+                      </td>
+                    ))}
+
+                    <td>
+                      <select
+                        value={selectedMilestones[rowKey] || ""}
+                        onChange={(e) =>
+                          setSelectedMilestones({
+                            ...selectedMilestones,
+                            [rowKey]: e.target.value,
+                          })
+                        }
+                      >
+                        <option value="">Unassigned</option>
+
+                        {milestones
+                          .filter((milestone) => !milestone.archived)
+                          .map((milestone) => (
+                            <option key={milestone.id} value={milestone.name}>
+                              {milestone.name}
+                            </option>
+                          ))}
+                      </select>
                     </td>
-                  ))}
 
-                  <td>
-                    <select
-                      value={selectedMilestones[rowKey] || ""}
-                      onChange={(e) =>
-                        setSelectedMilestones({
-                          ...selectedMilestones,
-                          [rowKey]: e.target.value,
-                        })
-                      }
-                    >
-                      <option value="">Unassigned</option>
-
-                      {milestones
-                        .filter((milestone) => !milestone.archived)
-                        .map((milestone) => (
-                          <option key={milestone.id} value={milestone.name}>
-                            {milestone.name}
-                          </option>
-                        ))}
-                    </select>
-                  </td>
-
-                  <td>
-                    <button
-                      type="button"
-                      className="small-button"
-                      onClick={() => createIssueFromDelta(activity, issueType)}
-                    >
-                      Create Issue
-                    </button>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      )}
+                    <td>
+                      <button
+                        type="button"
+                        className="small-button"
+                        onClick={() => createIssueFromDelta(activity, issueType)}
+                      >
+                        Create Issue
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        ))}
     </div>
   );
 }

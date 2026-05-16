@@ -984,3 +984,36 @@ body {
     color: #475569;
   }
 }
+.section-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.section-header-row h3 {
+  margin: 0;
+}
+
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+.mini-metric {
+  border: 1px solid #d7deea;
+  border-radius: 10px;
+  padding: 12px;
+  background: #f8fafc;
+}
+
+.mini-metric strong {
+  display: block;
+  font-size: 1.4rem;
+}
+
+.mini-metric span {
+  color: #526173;
+  font-size: 0.85rem;
+}
