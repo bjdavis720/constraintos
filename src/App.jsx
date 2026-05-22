@@ -10,7 +10,10 @@ import TodosPage from "./pages/TodosPage.jsx";
 import IssuesBoard from "./pages/IssuesBoard.jsx";
 import ExecutiveAttentionCenter from "./pages/ExecutiveAttentionCenter.jsx";
 import OperationalFeed from "./components/OperationalFeed.jsx";
+import TIAIntelligence from "./components/TIAIntelligence";
 import ScheduleIntelligence from "./pages/ScheduleIntelligence.jsx";
+import RevenueForecast from "./components/RevenueForecast.jsx";
+import FourWeekLookAhead from "./components/FourWeekLookAhead";
 
 import {
   getAgeInDays,
@@ -1121,6 +1124,41 @@ function importIssuesFromSchedule(importedIssues) {
   ) : (
     renderNoProjectSelected()
   ))}
+  {activePage === "TIA Intelligence" &&
+  (selectedProject ? (
+    <TIAIntelligence
+      scheduleSnapshots={scheduleSnapshots}
+      issues={issues}
+      updateCurrentProjectData={updateCurrentProjectData}
+    />
+  ) : (
+    renderNoProjectSelected()
+  ))}
+  {activePage === "Revenue Forecast" &&
+  (selectedProject ? (
+    <RevenueForecast scheduleSnapshots={scheduleSnapshots} />
+  ) : (
+    renderNoProjectSelected()
+  ))}
+  {activePage === "4-Week Look Ahead and Pull Plan" &&
+  (selectedProject ? (
+    <FourWeekLookAhead
+      project={projectName}
+      activities={
+        scheduleSnapshots?.[scheduleSnapshots.length - 1]?.activities ||
+        scheduleSnapshots?.[scheduleSnapshots.length - 1]?.scheduleActivities ||
+        scheduleSnapshots?.[scheduleSnapshots.length - 1]?.rows ||
+        scheduleSnapshots?.[scheduleSnapshots.length - 1]?.data ||
+        currentData?.scheduleActivities ||
+        []
+      }
+      constraints={constraints}
+      setConstraintForm={setConstraintForm}
+      setActivePage={setActivePage}
+    />
+  ) : (
+    renderNoProjectSelected()
+  ))}
         {activePage === "Schedule Milestones" &&
   (selectedProject ? (
     <ScheduleMilestones
@@ -1194,16 +1232,19 @@ function importIssuesFromSchedule(importedIssues) {
           ))}
 
         {![
-          "Project Setup",
-          "Project Dashboard",
-          "Executive Dashboard",
-          "Schedule Intelligence",
-          "Schedule Milestones",
-          "Constraint Board",
-          "Issues Board",
-          "To-Dos",
-          "Executive Attention",
-                 ].includes(activePage) && (
+  "Project Setup",
+  "Project Dashboard",
+  "Executive Dashboard",
+  "Schedule Intelligence",
+  "TIA Intelligence",
+  "Revenue Forecast",
+  "4-Week Look Ahead and Pull Plan",
+  "Schedule Milestones",
+  "Constraint Board",
+  "Issues Board",
+  "To-Dos",
+  "Executive Attention",
+].includes(activePage) && (
           <div className="card">
             <h3>{activePage}</h3>
             <p>This page is ready to reconnect as its own component.</p>

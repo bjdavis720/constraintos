@@ -8,12 +8,19 @@ function Sidebar({
   const navSections = [
     {
       label: "DASHBOARDS & ESCALATION",
-      items: ["Executive Dashboard", "Project Dashboard", "Executive Attention"],
+      items: [
+        "Executive Dashboard",
+        "Project Dashboard",
+        "Revenue Forecast",
+        "Executive Attention",
+      ],
     },
     {
       label: "WORKFLOW",
       items: [
         "Schedule Intelligence",
+        "TIA Intelligence",
+        "4-Week Look Ahead and Pull Plan",
         "Schedule Milestones",
         "Constraint Board",
         "Issues Board",
