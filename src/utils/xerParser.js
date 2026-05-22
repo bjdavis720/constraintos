@@ -25,10 +25,11 @@ export function parseXER(text) {
   let fields = [];
 
   const taskRows = [];
-  const taskResourceRows = [];
-  const activityTypeRows = [];
-  const activityCodeRows = [];
-  const taskActivityCodeRows = [];
+const taskResourceRows = [];
+const activityTypeRows = [];
+const activityCodeRows = [];
+const taskActivityCodeRows = [];
+const taskPredRows = [];
 
   lines.forEach((line) => {
     if (!line.trim()) return;
@@ -57,10 +58,11 @@ export function parseXER(text) {
     });
 
     if (currentTable === "TASK") taskRows.push(row);
-    if (currentTable === "TASKRSRC") taskResourceRows.push(row);
-    if (currentTable === "ACTVTYPE") activityTypeRows.push(row);
-    if (currentTable === "ACTVCODE") activityCodeRows.push(row);
-    if (currentTable === "TASKACTV") taskActivityCodeRows.push(row);
+if (currentTable === "TASKRSRC") taskResourceRows.push(row);
+if (currentTable === "ACTVTYPE") activityTypeRows.push(row);
+if (currentTable === "ACTVCODE") activityCodeRows.push(row);
+if (currentTable === "TASKACTV") taskActivityCodeRows.push(row);
+if (currentTable === "TASKPRED") taskPredRows.push(row);
   });
 
   const activityTypeById = {};
@@ -127,7 +129,20 @@ export function parseXER(text) {
     costByTaskId[taskId].remainingCost += remainingCost;
     costByTaskId[taskId].actualCost += actualCost;
   });
+const activityIdByTaskId = {};
 
+taskRows.forEach((row) => {
+  activityIdByTaskId[row.task_id] = row.task_code;
+});
+
+const relationships = taskPredRows
+  .map((row) => ({
+    predTaskId: activityIdByTaskId[row.pred_task_id],
+    succTaskId: activityIdByTaskId[row.task_id],
+    type: row.pred_type || "",
+    lag: parseFloatDaysFromHours(row.lag_hr_cnt),
+  }))
+  .filter((rel) => rel.predTaskId && rel.succTaskId);
   const tasks = taskRows.map((row) => {
     const totalFloat =
       parseFloatDaysFromHours(row.total_float_hr_cnt) ||
@@ -160,6 +175,7 @@ export function parseXER(text) {
         Critical: Number(totalFloat) <= 0 ? "Yes" : "No",
       }),
       taskId: row.task_id,
+      taskType: row.task_type || row.task_type_code || "",
       activityCodes,
       ...activityCodes,
       budgetAtCompletion: Math.round(costs.budgetAtCompletion * 100) / 100,
@@ -168,5 +184,10 @@ export function parseXER(text) {
     };
   });
 
-  return tasks.filter((task) => task.activityId && task.activityName);
+  const filteredTasks = tasks.filter((task) => task.activityId && task.activityName);
+
+return {
+  activities: filteredTasks,
+  relationships,
+};
 }

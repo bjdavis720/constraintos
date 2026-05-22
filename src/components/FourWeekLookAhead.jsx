@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { traceActivityToMilestone } from "../utils/logicTrace";
 
 function FourWeekLookAhead({
   activities = [],
@@ -6,7 +7,10 @@ function FourWeekLookAhead({
   constraints = [],
   setConstraintForm,
   setActivePage,
+  scheduleActivities = [],
+  scheduleRelationships = [],
 }) {
+  
   const [activeView, setActiveView] = useState("gantt");
   const [primarySort, setPrimarySort] = useState("wbs");
   const [secondarySort, setSecondarySort] = useState("activityCode");
@@ -254,7 +258,17 @@ function getActivityCodeDisplay(activity, codeName) {
   const lookAheadEnd = addWorkDays(today, 20);
   const workDays = getWorkDaysBetween(today, lookAheadEnd);
   const allActivities = [...activities, ...manualActivities];
+const milestoneIds = (scheduleActivities || [])
+  .filter((activity) => {
+    const taskType = activity.taskType || activity.type || "";
 
+    return (
+      taskType.includes("Milestone") ||
+      taskType.includes("Start Milestone") ||
+      taskType.includes("Finish Milestone")
+    );
+  })
+  .map((activity) => activity.id);
   const availableActivityCodes = useMemo(
     () => getActivityCodeOptions(allActivities),
     [activities, manualActivities]
@@ -920,6 +934,12 @@ activityCodeGroup: manualForm.responsible || "Unassigned",
                 <div className="pull-plan-empty">Drop activities here</div>
               ) : (
                 items.map((activity) => {
+                  const logicTrace = traceActivityToMilestone(
+  activity.id,
+  scheduleRelationships,
+  scheduleActivities,
+  milestoneIds
+);
                   const hasConstraint = activityHasConstraint(activity);
                   const floatValue = Number(activity.float);
                   const isCritical =
@@ -967,6 +987,22 @@ activityCodeGroup: manualForm.responsible || "Unassigned",
                             : "-"}
                         </span>
                       </div>
+                      {logicTrace ? (
+  <div className="milestone-trace trace-hit">
+    <strong>Feeds Milestone</strong>
+
+    <div>{logicTrace.milestoneName}</div>
+
+    <div>
+      {logicTrace.stepsAway} logic step
+      {logicTrace.stepsAway !== 1 ? "s" : ""} away
+    </div>
+  </div>
+) : (
+  <div className="milestone-trace trace-none">
+    No milestone path found
+  </div>
+)}
 
                       {(activity.predecessors || activity.successors) && (
                         <div className="sticky-note-logic">
@@ -977,6 +1013,7 @@ activityCodeGroup: manualForm.responsible || "Unassigned",
                             <span>Succ: {activity.successors}</span>
                           )}
                         </div>
+                        
                       )}
 
                       <textarea

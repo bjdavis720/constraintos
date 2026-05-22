@@ -1472,3 +1472,19 @@ body {
 .lookahead-wbs-group .lookahead-wbs-group {
   margin-left: 24px;
 }
+.milestone-trace {
+  margin-top: 10px;
+  padding: 8px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+}
+
+.trace-hit {
+  background: #fff3cd;
+  border-left: 4px solid #f59e0b;
+}
+
+.trace-none {
+  background: #f3f4f6;
+  border-left: 4px solid #9ca3af;
+}

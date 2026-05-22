@@ -30,6 +30,8 @@ function createEmptyProjectData() {
     issues: [],
     todos: [],
     scheduleSnapshots: [],
+scheduleActivities: [],
+scheduleRelationships: [],
   };
 }
 
@@ -98,6 +100,21 @@ function App() {
   const issues = currentData.issues || [];
   const todos = currentData.todos || [];
   const scheduleSnapshots = currentData.scheduleSnapshots || [];
+  const latestScheduleSnapshot = scheduleSnapshots?.[scheduleSnapshots.length - 1] || {};
+
+const latestScheduleActivities =
+  latestScheduleSnapshot.activities ||
+  latestScheduleSnapshot.scheduleActivities ||
+  latestScheduleSnapshot.rows ||
+  latestScheduleSnapshot.data ||
+  currentData?.scheduleActivities ||
+  [];
+
+const latestScheduleRelationships =
+  latestScheduleSnapshot.relationships ||
+  latestScheduleSnapshot.scheduleRelationships ||
+  currentData?.scheduleRelationships ||
+  [];
 
   const openTodos = todos.filter((todo) => todo.status === "Open");
   const overdueTodos = todos.filter((todo) => isOverdue(todo));
@@ -1143,19 +1160,14 @@ function importIssuesFromSchedule(importedIssues) {
   {activePage === "4-Week Look Ahead and Pull Plan" &&
   (selectedProject ? (
     <FourWeekLookAhead
-      project={projectName}
-      activities={
-        scheduleSnapshots?.[scheduleSnapshots.length - 1]?.activities ||
-        scheduleSnapshots?.[scheduleSnapshots.length - 1]?.scheduleActivities ||
-        scheduleSnapshots?.[scheduleSnapshots.length - 1]?.rows ||
-        scheduleSnapshots?.[scheduleSnapshots.length - 1]?.data ||
-        currentData?.scheduleActivities ||
-        []
-      }
-      constraints={constraints}
-      setConstraintForm={setConstraintForm}
-      setActivePage={setActivePage}
-    />
+  project={projectName}
+  activities={latestScheduleActivities}
+  scheduleActivities={latestScheduleActivities}
+  scheduleRelationships={latestScheduleRelationships}
+  constraints={constraints}
+  setConstraintForm={setConstraintForm}
+  setActivePage={setActivePage}
+/>
   ) : (
     renderNoProjectSelected()
   ))}

@@ -206,27 +206,38 @@ function ScheduleIntelligence({
     const text = await file.text();
     const fileName = file.name.toLowerCase();
 
-    const parsedRows = fileName.endsWith(".xer")
-      ? parseXER(text)
-      : parseCSV(text);
+    let parsedRows = [];
+let parsedRelationships = [];
 
-    if (parsedRows.length === 0) {
+if (fileName.endsWith(".xer")) {
+  const parsedXER = parseXER(text);
+
+  parsedRows = parsedXER.activities || [];
+  parsedRelationships = parsedXER.relationships || [];
+} else {
+  parsedRows = parseCSV(text);
+}
+        if (parsedRows.length === 0) {
       alert("No schedule activities were found in this file.");
       return;
     }
 
     const newSnapshot = {
-      id: Date.now(),
-      fileName: file.name,
-      uploadDate: new Date().toISOString(),
-      rows: parsedRows,
-    };
+  id: Date.now(),
+  fileName: file.name,
+  uploadDate: new Date().toISOString(),
+  rows: parsedRows,
+  activities: parsedRows,
+  relationships: parsedRelationships,
+};
 
     const updatedSnapshots = [...scheduleSnapshots, newSnapshot];
 
     updateCurrentProjectData({
-      scheduleSnapshots: updatedSnapshots,
-    });
+  scheduleSnapshots: updatedSnapshots,
+  scheduleActivities: parsedRows,
+  scheduleRelationships: parsedRelationships,
+});
 
     if (updatedSnapshots.length >= 2) {
       const previous = updatedSnapshots[updatedSnapshots.length - 2];
