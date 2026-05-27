@@ -1,57 +1,70 @@
 export function traceActivityToMilestone(
   activityId,
-  relationships,
-  activities,
+  relationships = [],
+  activities = [],
   milestoneIds = [],
-  maxDepth = 15
+  maxDepth = 25
 ) {
+  if (!activityId || !Array.isArray(relationships) || !Array.isArray(activities)) {
+    return null;
+  }
+
   const activityMap = {};
-  activities.forEach((a) => {
-    activityMap[a.id] = a;
+
+  activities.forEach((activity) => {
+    const id = activity.activityId || activity.id;
+    if (id) activityMap[String(id)] = activity;
   });
 
   const successorMap = {};
 
   relationships.forEach((rel) => {
-    if (!successorMap[rel.predTaskId]) {
-      successorMap[rel.predTaskId] = [];
-    }
+    const predId = rel.predTaskId || rel.predActivityId;
+    const succId = rel.succTaskId || rel.succActivityId;
 
-    successorMap[rel.predTaskId].push(rel.succTaskId);
+    if (!predId || !succId) return;
+
+    const predKey = String(predId);
+    const succKey = String(succId);
+
+    if (!successorMap[predKey]) successorMap[predKey] = [];
+    successorMap[predKey].push(succKey);
   });
 
+  const milestoneSet = new Set(milestoneIds.map(String));
   const visited = new Set();
 
   function walk(currentId, depth, path) {
+    const currentKey = String(currentId);
+
     if (depth > maxDepth) return null;
+    if (visited.has(currentKey)) return null;
 
-    if (visited.has(currentId)) return null;
+    visited.add(currentKey);
 
-    visited.add(currentId);
+    if (milestoneSet.has(currentKey)) {
+      const milestone = activityMap[currentKey];
 
-    if (milestoneIds.includes(currentId)) {
       return {
-        milestoneId: currentId,
-        milestoneName: activityMap[currentId]?.name || currentId,
+        milestoneId: currentKey,
+        milestoneName:
+          milestone?.activityName ||
+          milestone?.name ||
+          currentKey,
         stepsAway: depth,
         path,
       };
     }
 
-    const successors = successorMap[currentId] || [];
+    const successors = successorMap[currentKey] || [];
 
-    for (const succId of successors) {
-      const result = walk(
-        succId,
-        depth + 1,
-        [...path, succId]
-      );
-
+    for (const successorId of successors) {
+      const result = walk(successorId, depth + 1, [...path, successorId]);
       if (result) return result;
     }
 
     return null;
   }
 
-  return walk(activityId, 0, [activityId]);
+  return walk(String(activityId), 0, [String(activityId)]);
 }

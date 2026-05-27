@@ -7,25 +7,22 @@ function Sidebar({
 }) {
   const navSections = [
     {
-      label: "DASHBOARDS & ESCALATION",
+      label: "SCHEDULE",
       items: [
-        "Executive Dashboard",
-        "Project Dashboard",
+        "Schedule Intelligence",
+        "4-Week Look Ahead and Pull Plan",
+        "Schedule Milestones",
         "Revenue Forecast",
-        "Executive Attention",
+        "TIA Intelligence",
       ],
     },
     {
       label: "WORKFLOW",
-      items: [
-        "Schedule Intelligence",
-        "TIA Intelligence",
-        "4-Week Look Ahead and Pull Plan",
-        "Schedule Milestones",
-        "Constraint Board",
-        "Issues Board",
-        "To-Dos",
-      ],
+      items: ["Constraint Board", "Issues Board", "To-Dos"],
+    },
+    {
+      label: "DASHBOARDS & ESCALATION",
+      items: ["Project Dashboard", "Executive Dashboard", "Executive Attention"],
     },
   ];
 
@@ -43,7 +40,11 @@ function Sidebar({
 
       <button
         type="button"
-        className="project-setup-button"
+        className={
+          activePage === "Project Setup"
+            ? "project-setup-button active"
+            : "project-setup-button"
+        }
         onClick={() => setActivePage("Project Setup")}
       >
         + Project Setup

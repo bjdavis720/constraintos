@@ -238,17 +238,32 @@ const latestScheduleRelationships =
   };
 
   useEffect(() => {
+  try {
+    const lightweightProjectData = Object.fromEntries(
+      Object.entries(projectData).map(([projectId, data]) => [
+        projectId,
+        {
+          ...data,
+          scheduleSnapshots: [],
+          scheduleActivities: [],
+          scheduleRelationships: [],
+        },
+      ])
+    );
+
     localStorage.setItem(
       STORAGE_KEY,
       JSON.stringify({
         activePage,
         projects,
         selectedProject,
-        projectData,
+        projectData: lightweightProjectData,
       })
     );
-  }, [activePage, projects, selectedProject, projectData]);
-
+  } catch (error) {
+    console.error("ConstraintOS save failed:", error);
+  }
+}, [activePage, projects, selectedProject, projectData]);
   function createProject(e) {
     e.preventDefault();
 

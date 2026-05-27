@@ -29,9 +29,9 @@ function parseCSV(text) {
 
 function ScheduleIntelligence({
   project,
-  scheduleSnapshots,
+  scheduleSnapshots = [],
   updateCurrentProjectData,
-  issues,
+  issues = [],
   milestones = [],
   importMilestones,
   importIssuesFromSchedule,
@@ -62,7 +62,9 @@ function ScheduleIntelligence({
       ? scheduleSnapshots[scheduleSnapshots.length - 1]
       : null;
 
-  const latestActivities = latestSnapshot?.rows || [];
+  const latestActivities = Array.isArray(latestSnapshot?.rows)
+    ? latestSnapshot.rows
+    : [];
 
   useEffect(() => {
     if (scheduleSnapshots.length >= 2) {
@@ -184,6 +186,20 @@ function ScheduleIntelligence({
 
     return `Schedule Intelligence generated this issue from schedule activity data.${milestoneText}`;
   }
+function isMilestoneInNext90Days(activity) {
+  const today = new Date();
+
+  const ninetyDaysOut = new Date();
+  ninetyDaysOut.setDate(today.getDate() + 90);
+
+  const finishDate = activity.finish
+    ? new Date(activity.finish)
+    : null;
+
+  if (!finishDate || isNaN(finishDate)) return false;
+
+  return finishDate >= today && finishDate <= ninetyDaysOut;
+}
 
   function addCurrentActivityToMilestones(activity) {
     importMilestones([activity]);
@@ -203,48 +219,70 @@ function ScheduleIntelligence({
 
     if (!file) return;
 
-    const text = await file.text();
-    const fileName = file.name.toLowerCase();
+    try {
+      const text = await file.text();
+      const fileName = file.name.toLowerCase();
 
-    let parsedRows = [];
-let parsedRelationships = [];
+      let parsedRows = [];
+      let parsedRelationships = [];
 
-if (fileName.endsWith(".xer")) {
-  const parsedXER = parseXER(text);
+      if (fileName.endsWith(".xer")) {
+        const parsedXER = parseXER(text);
 
-  parsedRows = parsedXER.activities || [];
-  parsedRelationships = parsedXER.relationships || [];
-} else {
-  parsedRows = parseCSV(text);
-}
-        if (parsedRows.length === 0) {
-      alert("No schedule activities were found in this file.");
-      return;
-    }
+        if (Array.isArray(parsedXER)) {
+          parsedRows = parsedXER;
+          parsedRelationships = [];
+        } else {
+          parsedRows = parsedXER?.activities || [];
+          parsedRelationships = parsedXER?.relationships || [];
+        }
+      } else {
+        parsedRows = parseCSV(text);
+        parsedRelationships = [];
+      }
 
-    const newSnapshot = {
-  id: Date.now(),
-  fileName: file.name,
-  uploadDate: new Date().toISOString(),
-  rows: parsedRows,
-  activities: parsedRows,
-  relationships: parsedRelationships,
-};
+      if (!Array.isArray(parsedRows) || parsedRows.length === 0) {
+        alert("No schedule activities were found in this file.");
+        return;
+      }
 
-    const updatedSnapshots = [...scheduleSnapshots, newSnapshot];
+      if (!Array.isArray(parsedRelationships)) {
+        parsedRelationships = [];
+      }
 
-    updateCurrentProjectData({
-  scheduleSnapshots: updatedSnapshots,
-  scheduleActivities: parsedRows,
-  scheduleRelationships: parsedRelationships,
-});
+      const newSnapshot = {
+        id: Date.now(),
+        fileName: file.name,
+        uploadDate: new Date().toISOString(),
+        rows: parsedRows,
+        activities: parsedRows,
+        relationships: parsedRelationships.slice(0, 5000),
+      };
 
-    if (updatedSnapshots.length >= 2) {
-      const previous = updatedSnapshots[updatedSnapshots.length - 2];
-      const current = updatedSnapshots[updatedSnapshots.length - 1];
+      const updatedSnapshots = [...scheduleSnapshots, newSnapshot].slice(-2);
 
-      const results = compareScheduleSnapshots(previous.rows, current.rows);
-      setComparisonResults(results);
+      updateCurrentProjectData({
+        scheduleSnapshots: updatedSnapshots,
+        scheduleActivities: parsedRows,
+        scheduleRelationships: parsedRelationships.slice(0, 5000),
+      });
+
+      if (updatedSnapshots.length >= 2) {
+        const previous = updatedSnapshots[updatedSnapshots.length - 2];
+        const current = updatedSnapshots[updatedSnapshots.length - 1];
+
+        const results = compareScheduleSnapshots(
+          previous.rows || [],
+          current.rows || []
+        );
+
+        setComparisonResults(results);
+      }
+
+      event.target.value = "";
+    } catch (error) {
+      console.error("Schedule upload failed:", error);
+      alert("Schedule upload failed. Check the browser console for details.");
     }
   }
 
@@ -286,6 +324,7 @@ if (fileName.endsWith(".xer")) {
               <tr>
                 <th>File</th>
                 <th>Activities</th>
+                <th>Logic Links</th>
                 <th>Uploaded</th>
               </tr>
             </thead>
@@ -294,7 +333,8 @@ if (fileName.endsWith(".xer")) {
               {scheduleSnapshots.map((snapshot) => (
                 <tr key={snapshot.id}>
                   <td>{snapshot.fileName}</td>
-                  <td>{snapshot.rows.length}</td>
+                  <td>{snapshot.rows?.length || 0}</td>
+                  <td>{snapshot.relationships?.length || 0}</td>
                   <td>{new Date(snapshot.uploadDate).toLocaleString()}</td>
                 </tr>
               ))}
@@ -435,7 +475,8 @@ if (fileName.endsWith(".xer")) {
               ["deltaFloat", "Float Gained"],
             ]}
           />
-                   <DeltaTable
+
+          <DeltaTable
             sectionKey="newCriticalActivities"
             collapsed={collapsedSections.newCriticalActivities}
             toggleSection={toggleSection}
@@ -498,7 +539,7 @@ if (fileName.endsWith(".xer")) {
               ["finish", "Finish"],
               ["totalFloat", "Total Float"],
             ]}
-          /> 
+          />
         </>
       )}
 
@@ -546,9 +587,26 @@ if (fileName.endsWith(".xer")) {
                   );
 
                   return (
-                    <tr key={`current-${activity.activityId}`}>
+                    <tr
+  key={`current-${activity.activityId}`}
+  className={
+    activityFilter === "milestones" &&
+    isMilestoneInNext90Days(activity)
+      ? "next-90-milestone"
+      : ""
+  }
+>
                       <td>{activity.activityId}</td>
-                      <td>{activity.activityName}</td>
+                      <td>
+  {activity.activityName}
+
+  {activityFilter === "milestones" &&
+    isMilestoneInNext90Days(activity) && (
+      <span className="next-90-badge">
+        Next 90 Days
+      </span>
+    )}
+</td>
                       <td>{activity.start || "-"}</td>
                       <td>{activity.finish || "-"}</td>
                       <td>{activity.totalFloat || "-"}</td>
