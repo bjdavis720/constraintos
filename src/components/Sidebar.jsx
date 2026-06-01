@@ -5,72 +5,83 @@ function Sidebar({
   setSelectedProject,
   projects,
 }) {
-  const navSections = [
+  const constraintOSSections = [
     {
-      label: "SCHEDULE",
+      label: "CONSTRAINTOS",
       items: [
+        "Project Dashboard",
         "Schedule Intelligence",
         "4-Week Look Ahead and Pull Plan",
         "Submittal Readiness",
         "Schedule Milestones",
-        "Revenue Forecast",
         "TIA Intelligence",
+        "Constraint Board",
+        "Issues Board",
+        "To-Dos",
       ],
     },
     {
-      label: "WORKFLOW",
-      items: ["Constraint Board", "Issues Board", "To-Dos"],
+      label: "REVENUEOS",
+      items: ["Revenue Forecast"],
     },
     {
-      label: "DASHBOARDS & ESCALATION",
-      items: ["Project Dashboard", "Executive Dashboard", "Executive Attention"],
+      label: "EXECUTIVECOMMANDOS",
+      items: ["Executive Dashboard", "Executive Attention"],
     },
   ];
 
   return (
     <aside className="sidebar">
       <div className="sidebar-card sidebar-brand-card">
-        <img src="/logo.png" alt="ConstraintOS" className="logo sidebar-logo" />
+        <img
+  src={`${import.meta.env.BASE_URL}sentinel-logo.png`}
+  alt="SentinelOS"
+  className="logo sidebar-logo"
+/>
 
-        <h1 className="sidebar-brand-title">ConstraintOS</h1>
+        <h1 className="sidebar-brand-title">
+  Sentinel<span className="os-highlight">OS</span>
+</h1>
 
         <p className="sidebar-brand-subtitle">
-          Operational Constraint Intelligence
+          Project Risk & Execution Intelligence
         </p>
       </div>
 
       <button
         type="button"
         className={
-          activePage === "Project Setup"
+          activePage === "SentinelOS Home"
             ? "project-setup-button active"
             : "project-setup-button"
         }
-        onClick={() => setActivePage("Project Setup")}
+        onClick={() => setActivePage("SentinelOS Home")}
       >
-        + Project Setup
+        SentinelOS Home
       </button>
 
-      <div className="project-selector">
-        <label>Project</label>
+       {activePage !== "SentinelOS Home" && (
+  <div className="project-selector">
+    <label>Project</label>
 
-        <select
-          value={selectedProject || ""}
-          onChange={(e) => setSelectedProject(e.target.value)}
-        >
-          <option value="">Select Project</option>
+    <select
+      value={selectedProject || ""}
+      onChange={(e) => setSelectedProject(e.target.value)}
+    >
+      <option value="">Select Project</option>
 
-          {projects.map((project) => (
-            <option key={project.id} value={project.id}>
-              {project.name}
-            </option>
-          ))}
-        </select>
-      </div>
+      {projects.map((project) => (
+        <option key={project.id} value={project.id}>
+          {project.name}
+        </option>
+      ))}
+    </select>
+  </div>
+)}
 
-      {selectedProject && (
+      {selectedProject && activePage !== "SentinelOS Home" && (
         <>
-          {navSections.map((section) => (
+          {constraintOSSections.map((section) => (
             <div className="nav-section" key={section.label}>
               <div className="nav-section-label">{section.label}</div>
 
@@ -86,6 +97,21 @@ function Sidebar({
               ))}
             </div>
           ))}
+
+          <div className="nav-section">
+            <div className="nav-section-label">COMING SOON</div>
+
+            {["ProjectHealthOS", "RiskIntegratorOS", "ResourceOS"].map((item) => (
+              <button
+                type="button"
+                key={item}
+                className={activePage === item ? "nav-link active" : "nav-link"}
+                onClick={() => setActivePage(item)}
+              >
+                {item}
+              </button>
+            ))}
+          </div>
         </>
       )}
     </aside>

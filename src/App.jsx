@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import "./App.css";
-
+import SentinelHome from "./components/SentinelHome.jsx";
 import Sidebar from "./components/Sidebar.jsx";
 import Metric from "./components/Metric.jsx";
 import ProjectSetup from "./pages/ProjectSetup.jsx";
@@ -44,7 +44,7 @@ function App() {
   const parsedAppData = savedAppData ? JSON.parse(savedAppData) : null;
 
   const [activePage, setActivePage] = useState(
-    parsedAppData?.activePage || "Project Setup"
+    parsedAppData?.activePage || "SentinelOS Home"
   );
 
   const [projects, setProjects] = useState(parsedAppData?.projects || []);
@@ -833,6 +833,15 @@ setTodoForm({
       />
 
       <main className="main">
+      {activePage === "SentinelOS Home" && (
+  <SentinelHome
+    projects={projects}
+    projectData={projectData}
+    selectedProject={selectedProject}
+    setSelectedProject={setSelectedProject}
+    setActivePage={setActivePage}
+  />
+)}
         
         {activePage === "Project Setup" && (
           <ProjectSetup
@@ -1400,6 +1409,7 @@ deleteTeamMember={deleteTeamMember}
   "Issues Board",
   "To-Dos",
   "Executive Attention",
+  "SentinelOS Home",
 ].includes(activePage) && (
           <div className="card">
             <h3>{activePage}</h3>
