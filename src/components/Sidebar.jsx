@@ -11,6 +11,7 @@ function Sidebar({
       items: [
         "Schedule Intelligence",
         "4-Week Look Ahead and Pull Plan",
+        "Submittal Readiness",
         "Schedule Milestones",
         "Revenue Forecast",
         "TIA Intelligence",

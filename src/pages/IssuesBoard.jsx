@@ -57,6 +57,7 @@ function IssuesBoard({
   toggleIssueEscalation,
   permissions = {},
   dashboardFilter,
+  teamMembers = [],
 }) {
   const [expandedIssueId, setExpandedIssueId] = useState(null);
 
@@ -108,7 +109,7 @@ const [showArchivedIssues, setShowArchivedIssues] = useState(false);
       <div className="data-card">
         <h2>Active Issues</h2>
 
-        <table className="data-table">
+        <table className="data-table issues-table">
           <thead>
             <tr>
               <th>Issue</th>
@@ -122,15 +123,17 @@ const [showArchivedIssues, setShowArchivedIssues] = useState(false);
               <th>Total Float</th>
               <th>Age</th>
               <th>Escalation</th>
-              <th>Status</th>
-              <th>Action</th>
+<th>Status</th>
+<th>Assigned To</th>
+<th>Action Due</th>
+<th>Action</th>
             </tr>
           </thead>
 
           <tbody>
             {filteredIssues.length === 0 && (
               <tr>
-                <td colSpan="13">No issues match this view.</td>
+                <td colSpan="15">No issues match this view.</td>
               </tr>
             )}
 
@@ -170,6 +173,8 @@ const [showArchivedIssues, setShowArchivedIssues] = useState(false);
                       {issue.status || "Open"}
                     </button>
                   </td>
+                  <td>{issue.assignedActionOwner || "-"}</td>
+<td>{issue.assignedActionDueDate || "-"}</td>
 
                   <td>
                     <button
@@ -195,7 +200,7 @@ const [showArchivedIssues, setShowArchivedIssues] = useState(false);
 
 {expandedIssueId === issue.id && (
   <tr>
-    <td colSpan="13">
+    <td colSpan="15">
       <div className="card">
         <h3>Discuss / Solve</h3>
 
@@ -217,36 +222,48 @@ const [showArchivedIssues, setShowArchivedIssues] = useState(false);
           <label>
             Action Item
             <input
-              type="text"
-              value={todoDrafts[issue.id]?.action || ""}
-              onChange={(e) =>
-                setTodoDrafts({
-                  ...todoDrafts,
-                  [issue.id]: {
-                    ...(todoDrafts[issue.id] || {}),
-                    action: e.target.value,
-                  },
-                })
-              }
-            />
+  type="text"
+  value={todoDrafts[issue.id]?.action || ""}
+  onChange={(e) =>
+    setTodoDrafts({
+      ...todoDrafts,
+      [issue.id]: {
+        ...(todoDrafts[issue.id] || {}),
+        action: e.target.value,
+      },
+    })
+  }
+/>
           </label>
 
           <label>
-            Owner
-            <input
-              type="text"
-              value={todoDrafts[issue.id]?.owner || ""}
-              onChange={(e) =>
-                setTodoDrafts({
-                  ...todoDrafts,
-                  [issue.id]: {
-                    ...(todoDrafts[issue.id] || {}),
-                    owner: e.target.value,
-                  },
-                })
-              }
-            />
-          </label>
+  Assigned To
+  <select
+  value={todoDrafts[issue.id]?.assignedToUserId || ""}
+  onChange={(e) => {
+    const selectedMember = teamMembers.find(
+      (member) => member.id === e.target.value
+    );
+
+    setTodoDrafts({
+      ...todoDrafts,
+      [issue.id]: {
+        ...(todoDrafts[issue.id] || {}),
+        assignedToUserId: e.target.value,
+        owner: selectedMember?.name || "",
+      },
+    });
+  }}
+>
+  <option value="">Select Team Member</option>
+
+  {teamMembers.map((member) => (
+    <option key={member.id} value={member.id}>
+      {member.name} - {member.email}
+    </option>
+  ))}
+</select>
+</label>
 
           <label>
             Due Date
@@ -275,10 +292,11 @@ const [showArchivedIssues, setShowArchivedIssues] = useState(false);
       setTodoDrafts({
         ...todoDrafts,
         [issue.id]: {
-          action: "",
-          owner: "",
-          dueDate: "",
-        },
+  action: "",
+  owner: "",
+  assignedToUserId: "",
+  dueDate: "",
+},
       });
     }}
     disabled={!permissions.canCreateTodoFromIssue}

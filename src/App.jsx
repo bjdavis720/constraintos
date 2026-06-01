@@ -14,6 +14,7 @@ import TIAIntelligence from "./components/TIAIntelligence";
 import ScheduleIntelligence from "./pages/ScheduleIntelligence.jsx";
 import RevenueForecast from "./components/RevenueForecast.jsx";
 import FourWeekLookAhead from "./components/FourWeekLookAhead";
+import SubmittalReadiness from "./components/SubmittalReadiness.jsx";
 
 import {
   getAgeInDays,
@@ -29,9 +30,12 @@ function createEmptyProjectData() {
     constraints: [],
     issues: [],
     todos: [],
+    teamMembers: [],
+    submittals: [],
+    revenueHistory: [],
     scheduleSnapshots: [],
-scheduleActivities: [],
-scheduleRelationships: [],
+    scheduleActivities: [],
+    scheduleRelationships: [],
   };
 }
 
@@ -75,11 +79,21 @@ function App() {
   });
 
   const [todoForm, setTodoForm] = useState({
-    action: "",
-    owner: "",
-    dueDate: "",
-    status: "Open",
-  });
+  action: "",
+  owner: "",
+  dueDate: "",
+  status: "Open",
+  assignedToUserId: "",
+  reminderEnabled: true,
+});
+  const [teamMemberForm, setTeamMemberForm] = useState({
+  name: "",
+  email: "",
+  company: "",
+  role: "",
+});
+const [editingTeamMemberId, setEditingTeamMemberId] = useState(null);
+
 
   const [lastCompletedTodo, setLastCompletedTodo] = useState(null);
   const [mockRole, setMockRole] = useState("Admin");
@@ -96,10 +110,13 @@ function App() {
     : createEmptyProjectData();
 
   const milestones = currentData.milestones || [];
-  const constraints = currentData.constraints || [];
-  const issues = currentData.issues || [];
-  const todos = currentData.todos || [];
-  const scheduleSnapshots = currentData.scheduleSnapshots || [];
+const constraints = currentData.constraints || [];
+const issues = currentData.issues || [];
+const todos = currentData.todos || [];
+const teamMembers = currentData.teamMembers || [];
+const submittals = currentData.submittals || [];
+const revenueHistory = currentData.revenueHistory || [];
+const scheduleSnapshots = currentData.scheduleSnapshots || [];
   const latestScheduleSnapshot = scheduleSnapshots?.[scheduleSnapshots.length - 1] || {};
 
 const latestScheduleActivities =
@@ -364,7 +381,7 @@ function clearCurrentProjectData() {
   }
 
   function updateMilestoneStatus(id) {
-    const statusFlow = ["On Track", "At Risk", "Off Track", "Imported"];
+    const statusFlow = ["Imported", "On Track", "At Risk", "Off Track", "Complete"];
 
     updateCurrentProjectData({
       milestones: milestones.map((milestone) => {
@@ -388,6 +405,13 @@ function clearCurrentProjectData() {
       ),
     });
   }
+  function unarchiveMilestone(id) {
+  updateCurrentProjectData({
+    milestones: milestones.map((milestone) =>
+      milestone.id === id ? { ...milestone, archived: false } : milestone
+    ),
+  });
+}
 
   function addMilestone(e) {
     e.preventDefault();
@@ -611,26 +635,107 @@ function importIssuesFromSchedule(importedIssues) {
     }
 
     const newTodo = {
-      id: Date.now(),
-      action: todoData.action,
-      owner: todoData.owner,
-      dueDate: todoData.dueDate,
-      status: "Open",
-      sourceIssueId: issue.id,
-      sourceIssueTitle: issue.title,
-      discussionNotes: issue.notes || "",
-    };
+  id: Date.now(),
+  action: todoData.action,
+  owner: todoData.owner,
+  assignedToUserId: todoData.assignedToUserId || "",
+  reminderEnabled: true,
+  dueDate: todoData.dueDate,
+  status: "Open",
+  sourceIssueId: issue.id,
+  sourceIssueTitle: issue.title,
+  discussionNotes: issue.notes || "",
+};
 
     updateCurrentProjectData({
       todos: [...todos, newTodo],
       issues: issues.map((item) =>
-        item.id === issue.id ? { ...item, status: "Action Assigned" } : item
-      ),
+  item.id === issue.id
+    ? {
+        ...item,
+        status: "Action Assigned",
+        assignedActionOwner: todoData.owner || "",
+        assignedActionUserId: todoData.assignedToUserId || "",
+        assignedActionDueDate: todoData.dueDate || "",
+      }
+    : item
+),
     });
 
     alert("To-Do created from IDS action.");
   }
 
+  function addTeamMember(e) {
+  e.preventDefault();
+
+  if (!teamMemberForm.name.trim() || !teamMemberForm.email.trim()) {
+    alert("Please enter a team member name and email.");
+    return;
+  }
+
+  const emailAlreadyExists = teamMembers.some(
+  (member) =>
+    member.id !== editingTeamMemberId &&
+    member.email.toLowerCase() ===
+      teamMemberForm.email.trim().toLowerCase()
+);
+
+  if (emailAlreadyExists) {
+    alert("A team member with this email already exists for this project.");
+    return;
+  }
+
+  if (editingTeamMemberId) {
+  updateCurrentProjectData({
+    teamMembers: teamMembers.map((member) =>
+      member.id === editingTeamMemberId
+        ? {
+            ...member,
+            name: teamMemberForm.name.trim(),
+            email: teamMemberForm.email.trim(),
+            company: teamMemberForm.company.trim(),
+            role: teamMemberForm.role.trim(),
+          }
+        : member
+    ),
+  });
+
+  setEditingTeamMemberId(null);
+} else {
+  const newTeamMember = {
+    id: Date.now().toString(),
+    name: teamMemberForm.name.trim(),
+    email: teamMemberForm.email.trim(),
+    company: teamMemberForm.company.trim(),
+    role: teamMemberForm.role.trim(),
+  };
+
+    updateCurrentProjectData({
+    teamMembers: [...teamMembers, newTeamMember],
+  });
+}
+
+setTeamMemberForm({
+  name: "",
+  email: "",
+  company: "",
+  role: "",
+});
+
+setEditingTeamMemberId(null);
+}
+
+function deleteTeamMember(memberId) {
+  const confirmed = window.confirm(
+    "Are you sure you want to delete this team member?"
+  );
+
+  if (!confirmed) return;
+
+  updateCurrentProjectData({
+    teamMembers: teamMembers.filter((member) => member.id !== memberId),
+  });
+}
   function addTodo(e) {
     e.preventDefault();
 
@@ -645,10 +750,25 @@ function importIssuesFromSchedule(importedIssues) {
     }
 
     updateCurrentProjectData({
-      todos: [...todos, { id: Date.now(), ...todoForm }],
-    });
+  todos: [
+    ...todos,
+    {
+      id: Date.now(),
+      ...todoForm,
+      assignedToUserId: todoForm.assignedToUserId || "",
+      reminderEnabled: todoForm.reminderEnabled ?? true,
+    },
+  ],
+});
 
-    setTodoForm({ action: "", owner: "", dueDate: "", status: "Open" });
+setTodoForm({
+  action: "",
+  owner: "",
+  dueDate: "",
+  status: "Open",
+  assignedToUserId: "",
+  reminderEnabled: true,
+});
   }
 
   function completeTodo(id) {
@@ -713,43 +833,28 @@ function importIssuesFromSchedule(importedIssues) {
       />
 
       <main className="main">
-        <div className="topbar">
-          <div>
-            <h2>{activePage}</h2>
-            <p>{projectName || "No project selected"}</p>
-          </div>
-
-          <div className="topbar-actions">
-            <select
-              value={mockRole}
-              onChange={(e) => setMockRole(e.target.value)}
-              className="role-selector"
-            >
-              <option>Admin</option>
-              <option>Executive</option>
-              <option>Project Manager</option>
-              <option>Superintendent</option>
-              <option>Read Only</option>
-            </select>
-
-            <div className="badge">Sandbox MVP</div>
-          </div>
-        </div>
-
+        
         {activePage === "Project Setup" && (
           <ProjectSetup
-            projectForm={projectForm}
-            setProjectForm={setProjectForm}
-            createProject={createProject}
-            projects={projects}
-            selectedProject={selectedProject}
-            setSelectedProject={setSelectedProject}
-            archiveProject={archiveProject}
-            restoreProject={restoreProject}
-            deleteProject={deleteProject}
-             clearCurrentProjectData={clearCurrentProjectData}
-            permissions={permissions}           
-          />
+  projectForm={projectForm}
+  setProjectForm={setProjectForm}
+  createProject={createProject}
+  projects={projects}
+  selectedProject={selectedProject}
+  setSelectedProject={setSelectedProject}
+  archiveProject={archiveProject}
+  restoreProject={restoreProject}
+  deleteProject={deleteProject}
+  clearCurrentProjectData={clearCurrentProjectData}
+  permissions={permissions}
+  teamMembers={teamMembers}
+  teamMemberForm={teamMemberForm}
+setTeamMemberForm={setTeamMemberForm}
+editingTeamMemberId={editingTeamMemberId}
+setEditingTeamMemberId={setEditingTeamMemberId}
+addTeamMember={addTeamMember}
+deleteTeamMember={deleteTeamMember}
+/>
         )}
 
         {activePage === "Executive Attention" &&
@@ -1168,7 +1273,11 @@ function importIssuesFromSchedule(importedIssues) {
   ))}
   {activePage === "Revenue Forecast" &&
   (selectedProject ? (
-    <RevenueForecast scheduleSnapshots={scheduleSnapshots} />
+    <RevenueForecast
+  scheduleSnapshots={scheduleSnapshots}
+  revenueHistory={revenueHistory}
+  updateCurrentProjectData={updateCurrentProjectData}
+/>
   ) : (
     renderNoProjectSelected()
   ))}
@@ -1186,6 +1295,18 @@ function importIssuesFromSchedule(importedIssues) {
   ) : (
     renderNoProjectSelected()
   ))}
+  {activePage === "Submittal Readiness" &&
+  (selectedProject ? (
+    <SubmittalReadiness
+      project={projectName}
+      submittals={submittals}
+      scheduleActivities={latestScheduleActivities}
+      issues={issues}
+      updateCurrentProjectData={updateCurrentProjectData}
+    />
+  ) : (
+    renderNoProjectSelected()
+  ))}
         {activePage === "Schedule Milestones" &&
   (selectedProject ? (
     <ScheduleMilestones
@@ -1196,8 +1317,10 @@ function importIssuesFromSchedule(importedIssues) {
       addMilestone={addMilestone}
       updateMilestoneStatus={updateMilestoneStatus}
       archiveMilestone={archiveMilestone}
+       unarchiveMilestone={unarchiveMilestone}
       permissions={permissions}
       issues={issues || []}
+      todos={todos}
       updateCurrentProjectData={updateCurrentProjectData}
     />
   ) : (
@@ -1235,6 +1358,7 @@ function importIssuesFromSchedule(importedIssues) {
   permissions={permissions}
   dashboardFilter={dashboardFilter}
   deleteIssue={deleteIssue}
+  teamMembers={teamMembers}
 />
           ) : (
             renderNoProjectSelected()
@@ -1243,17 +1367,21 @@ function importIssuesFromSchedule(importedIssues) {
         {activePage === "To-Dos" &&
           (selectedProject ? (
             <TodosPage
-              project={projectName}
-              todos={todos}
-              todoForm={todoForm}
-              setTodoForm={setTodoForm}
-              addTodo={addTodo}
-              completeTodo={completeTodo}
-              undoCompleteTodo={undoCompleteTodo}
-              lastCompletedTodo={lastCompletedTodo}
-              permissions={permissions}
-              dashboardFilter={dashboardFilter}
-            />
+  project={projectName}
+  todos={todos}
+  todoForm={todoForm}
+  setTodoForm={setTodoForm}
+  addTodo={addTodo}
+  completeTodo={completeTodo}
+  undoCompleteTodo={undoCompleteTodo}
+  lastCompletedTodo={lastCompletedTodo}
+  permissions={permissions}
+  dashboardFilter={dashboardFilter}
+  teamMembers={teamMembers}
+  teamMemberForm={teamMemberForm}
+  setTeamMemberForm={setTeamMemberForm}
+  addTeamMember={addTeamMember}
+/>
           ) : (
             renderNoProjectSelected()
           ))}
@@ -1266,6 +1394,7 @@ function importIssuesFromSchedule(importedIssues) {
   "TIA Intelligence",
   "Revenue Forecast",
   "4-Week Look Ahead and Pull Plan",
+  "Submittal Readiness",
   "Schedule Milestones",
   "Constraint Board",
   "Issues Board",

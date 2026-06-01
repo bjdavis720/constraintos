@@ -1,3 +1,5 @@
+import React, { useState } from "react";
+
 function ScheduleMilestones({
   project,
   milestones,
@@ -6,31 +8,48 @@ function ScheduleMilestones({
   addMilestone,
   updateMilestoneStatus,
   archiveMilestone,
+  unarchiveMilestone,
   permissions,
   issues = [],
+  todos = [],
   updateCurrentProjectData,
 }) {
   const activeMilestones = milestones.filter((milestone) => !milestone.archived);
   const archivedMilestones = milestones.filter((milestone) => milestone.archived);
+  const [expandedMilestoneId, setExpandedMilestoneId] = useState(null);
 
   function handleChange(e) {
     const { name, value } = e.target;
     setMilestoneForm({ ...milestoneForm, [name]: value });
   }
 
-  function createIssueFromMilestone(milestone) {
-    const alreadyExists = issues.some(
+  function getMilestoneIssues(milestone) {
+    return issues.filter(
       (issue) =>
-        issue.source === "Schedule Milestones" &&
-        issue.milestoneId === milestone.id &&
-        issue.status !== "Closed"
+        issue.milestoneId === milestone.id || issue.milestone === milestone.name
+    );
+  }
+
+  function getMilestoneOpenIssues(milestone) {
+    return getMilestoneIssues(milestone).filter(
+      (issue) => issue.status !== "Closed" && !issue.archived
+    );
+  }
+
+  function getMilestoneOpenTodos(milestone) {
+    const milestoneIssueIds = getMilestoneIssues(milestone).map(
+      (issue) => issue.id
     );
 
-    if (alreadyExists) {
-      alert("An open issue already exists for this milestone.");
-      return;
-    }
+    return todos.filter(
+      (todo) =>
+        milestoneIssueIds.includes(todo.sourceIssueId) &&
+        todo.status !== "Complete" &&
+        todo.status !== "Closed"
+    );
+  }
 
+  function createIssueFromMilestone(milestone) {
     const newIssue = {
       id: Date.now(),
       title: `Milestone Issue: ${milestone.name}`,
@@ -50,6 +69,12 @@ function ScheduleMilestones({
     });
 
     alert("Milestone issue created.");
+  }
+
+  function toggleMilestoneDrilldown(milestoneId) {
+    setExpandedMilestoneId(
+      expandedMilestoneId === milestoneId ? null : milestoneId
+    );
   }
 
   return (
@@ -99,6 +124,7 @@ function ScheduleMilestones({
             <option>On Track</option>
             <option>At Risk</option>
             <option>Off Track</option>
+            <option>Complete</option>
             <option>Imported</option>
           </select>
         </div>
@@ -120,6 +146,8 @@ function ScheduleMilestones({
               <th>Name</th>
               <th>Target Date</th>
               <th>Status</th>
+              <th>Open Issues</th>
+              <th>Open Actions</th>
               <th>Action</th>
             </tr>
           </thead>
@@ -127,22 +155,15 @@ function ScheduleMilestones({
           <tbody>
             {activeMilestones.length === 0 && (
               <tr>
-                <td colSpan="4">No active milestones.</td>
+                <td colSpan="6">No active milestones.</td>
               </tr>
             )}
 
             {[...activeMilestones]
               .sort((a, b) => new Date(a.due) - new Date(b.due))
-              .map((milestone) => {
-                const issueAlreadyExists = issues.some(
-                  (issue) =>
-                    issue.source === "Schedule Milestones" &&
-                    issue.milestoneId === milestone.id &&
-                    issue.status !== "Closed"
-                );
-
-                return (
-                  <tr key={milestone.id}>
+              .map((milestone) => (
+                <React.Fragment key={milestone.id}>
+                  <tr>
                     <td>{milestone.name}</td>
                     <td>{milestone.due}</td>
                     <td>
@@ -157,28 +178,95 @@ function ScheduleMilestones({
                         {milestone.status}
                       </button>
                     </td>
+
+                    <td>
+                      <button
+                        type="button"
+                        className="secondary-button small-button"
+                        onClick={() => toggleMilestoneDrilldown(milestone.id)}
+                      >
+                        {getMilestoneOpenIssues(milestone).length}
+                      </button>
+                    </td>
+
+                    <td>
+                      <button
+                        type="button"
+                        className="secondary-button small-button"
+                        onClick={() => toggleMilestoneDrilldown(milestone.id)}
+                      >
+                        {getMilestoneOpenTodos(milestone).length}
+                      </button>
+                    </td>
+
                     <td>
                       <button
                         type="button"
                         className="secondary-button small-button"
                         onClick={() => createIssueFromMilestone(milestone)}
-                        disabled={issueAlreadyExists}
                       >
-                        {issueAlreadyExists ? "Issue Created" : "Create Issue"}
+                        Create Issue
                       </button>
 
                       <button
                         type="button"
                         className="secondary-button small-button"
+                        disabled={milestone.status !== "Complete"}
+                        title={
+                          milestone.status !== "Complete"
+                            ? "Milestone must be marked Complete before it can be archived."
+                            : "Archive milestone"
+                        }
                         onClick={() => archiveMilestone(milestone.id)}
-                        disabled={!permissions.canArchiveMilestone}
                       >
                         Archive
                       </button>
                     </td>
                   </tr>
-                );
-              })}
+
+                  {expandedMilestoneId === milestone.id && (
+                    <tr>
+                      <td colSpan="6">
+                        <div className="card">
+                          <h3>Related Issues</h3>
+
+                          {getMilestoneOpenIssues(milestone).length === 0 ? (
+                            <p>No open issues.</p>
+                          ) : (
+                            <ul>
+                              {getMilestoneOpenIssues(milestone).map(
+                                (issue) => (
+                                  <li key={issue.id}>
+                                    {issue.title} ({issue.status})
+                                  </li>
+                                )
+                              )}
+                            </ul>
+                          )}
+
+                          <h3>Related Actions</h3>
+
+                          {getMilestoneOpenTodos(milestone).length === 0 ? (
+                            <p>No open actions.</p>
+                          ) : (
+                            <ul>
+                              {getMilestoneOpenTodos(milestone).map((todo) => (
+                                <li key={todo.id}>
+                                  {todo.action}
+                                  {todo.owner ? ` — ${todo.owner}` : ""}
+                                  {todo.dueDate
+                                    ? ` (Due ${todo.dueDate})`
+                                    : ""}
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
+              ))}
           </tbody>
         </table>
       </div>
@@ -193,6 +281,9 @@ function ScheduleMilestones({
                 <th>Name</th>
                 <th>Target Date</th>
                 <th>Status</th>
+                <th>Open Issues</th>
+                <th>Open Actions</th>
+                <th>Action</th>
               </tr>
             </thead>
 
@@ -202,6 +293,17 @@ function ScheduleMilestones({
                   <td>{milestone.name}</td>
                   <td>{milestone.due}</td>
                   <td>{milestone.status}</td>
+                  <td>{getMilestoneOpenIssues(milestone).length}</td>
+                  <td>{getMilestoneOpenTodos(milestone).length}</td>
+                  <td>
+                    <button
+                      type="button"
+                      className="secondary-button small-button"
+                      onClick={() => unarchiveMilestone(milestone.id)}
+                    >
+                      Unarchive
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>

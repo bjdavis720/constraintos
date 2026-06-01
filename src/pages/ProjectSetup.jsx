@@ -10,6 +10,13 @@ function ProjectSetup({
   deleteProject,
   clearCurrentProjectData,
   permissions,
+  teamMembers,
+  teamMemberForm,
+setTeamMemberForm,
+editingTeamMemberId,
+setEditingTeamMemberId,
+addTeamMember,
+deleteTeamMember,
 }) {
   function handleChange(e) {
     const { name, value } = e.target;
@@ -162,19 +169,165 @@ function ProjectSetup({
   </button>
 
   <button
-    type="button"
-    className="secondary-button small-button danger-button"
-    onClick={() => deleteProject(project.id)}
-    disabled={!permissions.canDeleteProject}
-  >
-    Delete
-  </button>
+  type="button"
+  className="secondary-button small-button danger-button"
+  onClick={() => deleteProject(project.id)}
+  disabled={!permissions.canDeleteProject}
+>
+  Delete
+</button>
 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+            {selectedProject && (
+        <div className="data-card">
+          <h2>Project Team Members</h2>
+          <p>Add people who can be assigned To-Dos and receive reminder emails.</p>
+
+          <form className="entry-form" onSubmit={addTeamMember}>
+            <div className="form-group">
+              <label>Name</label>
+              <input
+                type="text"
+                placeholder="Name"
+                value={teamMemberForm.name}
+                onChange={(e) =>
+                  setTeamMemberForm({
+                    ...teamMemberForm,
+                    name: e.target.value,
+                  })
+                }
+              />
+            </div>
+
+            <div className="form-group">
+              <label>Email</label>
+              <input
+                type="email"
+                placeholder="Email"
+                value={teamMemberForm.email}
+                onChange={(e) =>
+                  setTeamMemberForm({
+                    ...teamMemberForm,
+                    email: e.target.value,
+                  })
+                }
+              />
+            </div>
+
+            <div className="form-group">
+  <label>Company</label>
+  <input
+    type="text"
+    placeholder="Company"
+    value={teamMemberForm.company}
+    onChange={(e) =>
+      setTeamMemberForm({
+        ...teamMemberForm,
+        company: e.target.value,
+      })
+    }
+  />
+</div>
+
+<div className="form-group">
+  <label>Role</label>
+  <input
+    type="text"
+    placeholder="Role"
+    value={teamMemberForm.role}
+    onChange={(e) =>
+      setTeamMemberForm({
+        ...teamMemberForm,
+        role: e.target.value,
+      })
+    }
+  />
+</div>
+
+            <div className="form-button-group">
+  <label>&nbsp;</label>
+
+  <button type="submit">
+    {editingTeamMemberId ? "Save Contact" : "Add Contact"}
+  </button>
+
+  {editingTeamMemberId && (
+    <button
+      type="button"
+      className="secondary-button cancel-button"
+      onClick={() => {
+        setEditingTeamMemberId(null);
+
+        setTeamMemberForm({
+          name: "",
+          email: "",
+          company: "",
+          role: "",
+        });
+      }}
+    >
+      Cancel
+    </button>
+  )}
+</div>
+          </form>
+
+          {teamMembers.length === 0 ? (
+            <p>No team members added yet for this project.</p>
+          ) : (
+            <table className="data-table">
+              <thead>
+                <tr>
+  <th>Name</th>
+  <th>Email</th>
+  <th>Company</th>
+  <th>Role</th>
+  <th>Actions</th>
+</tr>
+              </thead>
+              <tbody>
+                {teamMembers.map((member) => (
+                  <tr key={member.id}>
+  <td>{member.name}</td>
+  <td>{member.email}</td>
+  <td>{member.company || "-"}</td>
+  <td>{member.role || "-"}</td>
+  <td>
+  <button
+    type="button"
+    className="secondary-button small-button"
+    onClick={() => {
+      setEditingTeamMemberId(member.id);
+      setTeamMemberForm({
+        name: member.name || "",
+        email: member.email || "",
+        company: member.company || "",
+        role: member.role || "",
+      });
+    }}
+  >
+    Edit
+  </button>
+
+  <button
+    type="button"
+    className="secondary-button small-button danger-button"
+    onClick={() => deleteTeamMember(member.id)}
+  >
+    Delete
+  </button>
+</td>
+</tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
 
       {archivedProjects.length > 0 && (
         <div className="data-card">

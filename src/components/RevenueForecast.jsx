@@ -1,4 +1,8 @@
-function RevenueForecast({ scheduleSnapshots = [] }) {
+function RevenueForecast({
+  scheduleSnapshots = [],
+  revenueHistory = [],
+  updateCurrentProjectData,
+}) {
   const previousSnapshot =
     scheduleSnapshots.length >= 2
       ? scheduleSnapshots[scheduleSnapshots.length - 2]
@@ -46,9 +50,53 @@ function RevenueForecast({ scheduleSnapshots = [] }) {
 
     return months;
   }
+function getSnapshotActivities(snapshot) {
+  return (
+    snapshot?.activities ||
+    snapshot?.scheduleActivities ||
+    snapshot?.rows ||
+    snapshot?.data ||
+    []
+  );
+}
+function formatMonthLabel(monthKey) {
+  const date = new Date(`${monthKey}-01T00:00:00`);
+
+  return date.toLocaleString("default", {
+    month: "short",
+    year: "numeric",
+  });
+}
+function shiftMonthKeyForward(monthKey) {
+  const date = new Date(`${monthKey}-01T00:00:00`);
+
+  date.setMonth(date.getMonth() + 1);
+
+  return `${date.getFullYear()}-${String(
+    date.getMonth() + 1
+  ).padStart(2, "0")}`;
+}
+function getActivityActualCost(activity) {
+  return (
+    Number(activity.actualCost || 0) ||
+    Number(activity.actualTotalCost || 0) ||
+    Number(activity.actual_total_cost || 0) ||
+    Number(activity.actCost || 0) ||
+    Number(activity.act_cost || 0) ||
+    0
+  );
+}
+
+function getTotalActualCost(snapshot) {
+  const activities = getSnapshotActivities(snapshot);
+
+  return activities.reduce((total, activity) => {
+    return total + getActivityActualCost(activity);
+  }, 0);
+}
 
   function buildMonthlyForecast(snapshot) {
-    const activities = snapshot?.rows || [];
+    const activities = getSnapshotActivities(snapshot);
     const costLoadedActivities = activities.filter(
   (activity) => Number(activity.budgetAtCompletion || 0) !== 0
 );
@@ -77,17 +125,6 @@ function RevenueForecast({ scheduleSnapshots = [] }) {
   0
 );
 
-console.log(
-  "Top BAC Activities",
-  [...costLoadedActivities]
-    .sort(
-      (a, b) =>
-        Number(b.budgetAtCompletion || 0) -
-        Number(a.budgetAtCompletion || 0)
-    )
-    .slice(0, 25)
-);
-
 return {
   activities,
   costLoadedActivities,
@@ -98,42 +135,145 @@ return {
 
   const currentForecast = buildMonthlyForecast(latestSnapshot);
   const previousForecast = buildMonthlyForecast(previousSnapshot);
+const previousActualCost = getTotalActualCost(previousSnapshot);
+const currentActualCost = getTotalActualCost(latestSnapshot);
 
+const actualRevenueDelta =
+  currentActualCost - previousActualCost;
+  console.log("Previous Actual Cost", previousActualCost);
+console.log("Current Actual Cost", currentActualCost);
+console.log("Actual Revenue Delta", actualRevenueDelta);
+
+console.log(
+  "Previous Snapshot Sample",
+  getSnapshotActivities(previousSnapshot)?.[0]
+);
+
+console.log(
+  "Current Snapshot Sample",
+  getSnapshotActivities(latestSnapshot)?.[0]
+);
+
+const manualActualBilledByMonth = revenueHistory.reduce((totals, entry) => {
+  totals[entry.month] = (totals[entry.month] || 0) + Number(entry.amount || 0);
+  return totals;
+}, {});
+
+function getSnapshotRevenueMonth(snapshot) {
+  const fileName = snapshot?.fileName || "";
+
+  const match = fileName.match(/_(\d{2})(\d{2})/);
+
+  if (!match) return null;
+
+  const month = match[1];
+  const year = `20${match[2]}`;
+
+  return `${year}-${month}`;
+}
+
+const importedRevenueMonth = getSnapshotRevenueMonth(latestSnapshot);
+
+const actualBilledByMonth = {
+  ...manualActualBilledByMonth,
+};
+
+if (importedRevenueMonth && actualRevenueDelta !== 0) {
+  actualBilledByMonth[importedRevenueMonth] =
+    (actualBilledByMonth[importedRevenueMonth] || 0) + actualRevenueDelta;
+}
+function saveImportedRevenueDelta() {
+  if (!importedRevenueMonth || actualRevenueDelta === 0) {
+    alert("No imported revenue delta is available to save.");
+    return;
+  }
+
+  const existingImportedEntry = revenueHistory.find(
+    (entry) => entry.month === importedRevenueMonth && entry.source === "imported"
+  );
+
+  if (existingImportedEntry) {
+    alert("Imported revenue has already been saved for this month.");
+    return;
+  }
+
+  const newEntry = {
+    id: Date.now(),
+    month: importedRevenueMonth,
+    amount: actualRevenueDelta,
+    source: "imported",
+  };
+
+  updateCurrentProjectData({
+    revenueHistory: [...revenueHistory, newEntry],
+  });
+
+  alert("Imported revenue delta saved to Revenue History.");
+}
   const allMonthKeys = Array.from(
-    new Set([
-      ...Object.keys(previousForecast.monthlyTotals),
-      ...Object.keys(currentForecast.monthlyTotals),
-    ])
-  ).sort();
+  new Set([
+    ...Object.keys(previousForecast.monthlyTotals),
+    ...Object.keys(currentForecast.monthlyTotals),
+    ...Object.keys(actualBilledByMonth),
+  ])
+).sort();
 
-  let currentCumulative = 0;
-  let previousCumulative = 0;
-
-  const forecastRows = allMonthKeys.map((monthKey) => {
+  const forecastRows = allMonthKeys.reduce(
+  (acc, monthKey) => {
     const currentPlannedBilling =
-      currentForecast.monthlyTotals[monthKey] || 0;
-    const previousPlannedBilling =
-      previousForecast.monthlyTotals[monthKey] || 0;
+  currentForecast.monthlyTotals[monthKey] ||
+  previousForecast.monthlyTotals[monthKey] ||
+  actualBilledByMonth[monthKey] ||
+  0;
 
-    currentCumulative += currentPlannedBilling;
-    previousCumulative += previousPlannedBilling;
+    const previousPlannedBilling =
+  previousForecast.monthlyTotals[monthKey] ||
+  currentForecast.monthlyTotals[monthKey] ||
+  actualBilledByMonth[monthKey] ||
+  0;
+
+    const currentCumulative =
+  acc.currentCumulative +
+  (actualBilledByMonth[monthKey] !== undefined
+    ? actualBilledByMonth[monthKey]
+    : currentPlannedBilling);
+
+    const previousCumulative =
+      acc.previousCumulative + previousPlannedBilling;
 
     const date = new Date(`${monthKey}-01`);
 
-    return {
+    acc.rows.push({
       monthKey,
-      monthLabel: date.toLocaleString("default", {
-        month: "short",
-        year: "numeric",
-      }),
+monthLabel: formatMonthLabel(monthKey),
+actualBilled: actualBilledByMonth[monthKey] || 0,
       currentPlannedBilling,
       previousPlannedBilling,
-      monthlyDelta: currentPlannedBilling - previousPlannedBilling,
+      monthlyDelta:
+  actualBilledByMonth[monthKey] !== undefined
+    ? actualBilledByMonth[monthKey] - currentPlannedBilling
+    : 0,
       currentCumulative,
       previousCumulative,
-      cumulativeDelta: currentCumulative - previousCumulative,
+      cumulativeDelta:
+        currentCumulative - previousCumulative,
+    });
+
+    return {
+      rows: acc.rows,
+      currentCumulative,
+      previousCumulative,
+      cumulativeDelta:
+        currentCumulative - previousCumulative,
     };
-  });
+  },
+  {
+    rows: [],
+    currentCumulative: 0,
+    previousCumulative: 0,
+    cumulativeDelta: 0,
+  }
+).rows;
 
   const totalRevenueDelta =
     currentForecast.totalForecastRevenue -
@@ -148,7 +288,37 @@ return {
     (min, row) => Math.min(min, row.monthlyDelta),
     0
   );
+function addManualRevenueHistory(e) {
+  e.preventDefault();
 
+  const formData = new FormData(e.currentTarget);
+  const month = formData.get("month");
+  const amount = Number(formData.get("amount") || 0);
+
+  if (!month || amount === 0) {
+    alert("Please enter a month and revenue amount.");
+    return;
+  }
+
+  const newEntry = {
+    id: Date.now(),
+    month,
+    amount,
+    source: "manual",
+  };
+
+  updateCurrentProjectData({
+    revenueHistory: [...revenueHistory, newEntry],
+  });
+
+  e.currentTarget.reset();
+}
+
+function deleteRevenueHistoryEntry(id) {
+  updateCurrentProjectData({
+    revenueHistory: revenueHistory.filter((entry) => entry.id !== id),
+  });
+}
   return (
     <div className="page">
       <div className="page-header">
@@ -172,33 +342,89 @@ return {
           {currentForecast.costLoadedActivities.length}
         </p>
       </div>
+      <div className="data-card">
+  <h2>Forecast Source</h2>
+  ...
+</div>
 
-      <div className="metrics-grid">
-        <div className="metric-card">
-          <h3>Current Forecast Revenue</h3>
-          <div className="metric-value">
-            {formatCurrency(currentForecast.totalForecastRevenue)}
-          </div>
-        </div>
+{/* INSERT REVENUE HISTORY CARD HERE */}
 
-        <div className="metric-card">
-          <h3>Prior Forecast Revenue</h3>
-          <div className="metric-value">
-            {formatCurrency(previousForecast.totalForecastRevenue)}
-          </div>
-        </div>
+<div className="data-card">
+  <h2>Revenue History</h2>
 
-        <div className="metric-card">
-          <h3>Total Revenue Delta</h3>
-          <div className="metric-value">{formatDelta(totalRevenueDelta)}</div>
-        </div>
+  <form className="entry-form" onSubmit={addManualRevenueHistory}>
+    <input type="month" name="month" />
+    <input type="number" name="amount" placeholder="Revenue amount" />
+    <button type="submit">Add Revenue</button>
+  </form>
 
-        <div className="metric-card">
-          <h3>Largest Monthly Increase</h3>
-          <div className="metric-value">
-            {formatDelta(largestMonthlyIncrease)}
-          </div>
-        </div>
+  {revenueHistory.length === 0 ? (
+    <p>No revenue history has been saved yet.</p>
+  ) : (
+    <table className="data-table">
+      <thead>
+        <tr>
+          <th>Month</th>
+          <th>Revenue</th>
+          <th>Source</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        {[...revenueHistory]
+          .sort((a, b) => a.month.localeCompare(b.month))
+          .map((entry) => (
+            <tr key={entry.id}>
+              <td>{formatMonthLabel(entry.month)}</td>
+              <td>{formatCurrency(entry.amount)}</td>
+              <td>{entry.source}</td>
+              <td>
+                {entry.source === "manual" ? (
+                  <button
+                    type="button"
+                    className="small-button"
+                    onClick={() => deleteRevenueHistoryEntry(entry.id)}
+                  >
+                    Delete
+                  </button>
+                ) : (
+                  "-"
+                )}
+              </td>
+            </tr>
+          ))}
+      </tbody>
+    </table>
+  )}
+</div>
+
+<div className="metrics-grid"></div>
+
+            <div className="metrics-grid">
+              <div className="metric-card">
+  <h3>Actual Revenue Delta</h3>
+  <button
+  type="button"
+  className="secondary-button"
+  onClick={saveImportedRevenueDelta}
+>
+  Save Imported Revenue
+</button>
+
+  <div className="metric-value">
+    {formatCurrency(actualRevenueDelta)}
+  </div>
+</div>
+
+
+  <div className="metric-card">
+    <h3>Current Forecast Revenue</h3>
+
+    <div className="metric-value">
+      {formatCurrency(currentForecast.totalForecastRevenue)}
+    </div>
+  </div>
 
         <div className="metric-card">
           <h3>Largest Monthly Decrease</h3>
@@ -222,7 +448,7 @@ return {
             <thead>
               <tr>
                 <th>Month</th>
-                <th>Prior Forecast</th>
+                <th>Actual Billed</th>
                 <th>Current Forecast</th>
                 <th>Monthly Delta</th>
                 <th>Prior Cumulative</th>
@@ -235,7 +461,7 @@ return {
               {forecastRows.map((row) => (
                 <tr key={row.monthKey}>
                   <td>{row.monthLabel}</td>
-                  <td>{formatCurrency(row.previousPlannedBilling)}</td>
+                  <td>{formatCurrency(row.actualBilled)}</td>
                   <td>{formatCurrency(row.currentPlannedBilling)}</td>
                   <td>{formatDelta(row.monthlyDelta)}</td>
                   <td>{formatCurrency(row.previousCumulative)}</td>
