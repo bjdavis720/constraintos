@@ -155,15 +155,18 @@ function SentinelHome({
         <button
           type="button"
           className="sentinel-module-card module-health"
-          onClick={() => openModule("ProjectHealthOS")}
+          onClick={() => setActivePage("ProjectHealthOS")}
         >
           <img
   src={`${import.meta.env.BASE_URL}projecthealth-logo.png`}
   alt="ProjectHealthOS"
 />
-          <span>Coming Soon</span>
+          <span>Active Module</span>
           <h3>ProjectHealthOS</h3>
-          <p>Recurring project health reviews, process compliance, and action tracking.</p>
+          <p>
+  Project health reviews, accountability tracking,
+  issue management, and action resolution.
+</p>
         </button>
 
         <button

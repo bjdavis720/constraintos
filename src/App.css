@@ -189,6 +189,7 @@ body {
   border: 1px solid #d8dee9;
   border-radius: 14px;
   overflow: hidden;
+  margin-bottom: 16px;
 }
 
 .data-table {
@@ -2103,4 +2104,104 @@ body {
 .health-status-pill.na {
   background: #dbeafe;
   color: #1d4ed8;
+}
+/* ProjectHealthOS Review Heading Groups */
+
+.health-review-group {
+  margin-bottom: 12px;
+  border: 1px solid #d5deea;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.health-review-heading-row {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  background: #102746;
+  color: #ffffff;
+
+  border: none;
+  padding: 14px 18px;
+
+  font-size: 18px;
+  font-weight: 800;
+  font-family: inherit;
+
+  cursor: pointer;
+}
+
+.health-review-heading-row:hover {
+  background: #16365f;
+}
+
+.health-review-heading-count {
+  opacity: 0.85;
+  font-size: 14px;
+}
+
+.health-review-items-table {
+  margin: 0;
+}
+.import-divider {
+  margin-top: 18px;
+  margin-bottom: 14px;
+  text-align: center;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+.project-health-os-page h2 {
+  margin-top: 0;
+  margin-bottom: 18px;
+  color: #0f172a;
+}
+
+.project-health-os-page .card,
+.project-health-os-page .data-card {
+  padding-top: 22px;
+}
+.project-health-os-page > h1 {
+  margin-bottom: 24px;
+}
+.module-hero {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  background: linear-gradient(135deg, #0b1f3f, #12325f, #17418a);
+  color: white;
+  border-radius: 24px;
+  padding: 28px 34px;
+  margin-bottom: 24px;
+  box-shadow: 0 14px 30px rgba(15, 42, 86, 0.25);
+}
+
+.module-hero-logo {
+  width: 112px;
+  height: auto;
+  flex-shrink: 0;
+  background: white;
+  padding: 10px;
+  border-radius: 16px;
+}
+
+.module-hero h1 {
+  margin: 0;
+  font-size: 2.4rem;
+  line-height: 1;
+}
+
+.module-hero p {
+  margin: 10px 0 0;
+  color: #dbeafe;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
+.module-hero-health {
+  border-left: 6px solid #16a34a;
 }

@@ -18,6 +18,7 @@ function ProjectHealthOS({
   const todos = healthData.todos || [];
   const [expandedIssueId, setExpandedIssueId] = useState(null);
 const [todoDrafts, setTodoDrafts] = useState({});
+const [expandedHeadings, setExpandedHeadings] = useState({});
 
   function saveHealthData(updates) {
     updateProjectHealthOS({
@@ -32,8 +33,8 @@ const [todoDrafts, setTodoDrafts] = useState({});
     const form = new FormData(e.target);
     const heading = form.get("heading")?.trim();
     const item = form.get("item")?.trim();
-    const status = form.get("status") || "Green";
-const notes = form.get("notes")?.trim() || "";
+    const status = "N/A";
+const notes = "";
 
     if (!heading || !item) {
       alert("Please enter a heading and review item.");
@@ -58,44 +59,86 @@ notes,
   }
 
   function importReviewItems(e) {
-    const text = e.target.value;
+  const fileInput = e.target;
+  const file = fileInput.files?.[0];
 
-    if (!text.trim()) return;
+  if (!file) return;
+  const fileName = file.name.toLowerCase();
+  const reader = new FileReader();
 
-    const lines = text
-      .split("\n")
-      .map((line) => line.trim())
-      .filter(Boolean);
+  reader.onload = (event) => {
+    try {
+      const data = event.target.result;
+      let rows = [];
 
-    const imported = lines
-      .map((line, index) => {
-        const parts = line.split(",").map((part) => part.trim());
+      if (fileName.endsWith(".xlsx") || fileName.endsWith(".xls")) {
+        const workbook = XLSX.read(data, { type: "array" });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
 
-        if (parts.length < 2) return null;
+        rows = XLSX.utils.sheet_to_json(worksheet, {
+          defval: "",
+        });
+      } else {
+        const text = String(data || "");
+        const lines = text
+          .split(/\r?\n/)
+          .map((line) => line.trim())
+          .filter(Boolean);
 
-        return {
-          id: Date.now() + index,
-          heading: parts[0],
-          item: parts[1],
-          status,
-notes,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-      })
-      .filter(Boolean);
+        const headers = lines[0].split(",").map((h) => h.trim());
 
-    if (imported.length === 0) {
-      alert("Use this format: Heading, Item");
-      return;
+        rows = lines.slice(1).map((line) => {
+          const values = line.split(",").map((v) => v.trim());
+
+          return headers.reduce((row, header, index) => {
+            row[header] = values[index] || "";
+            return row;
+          }, {});
+        });
+      }
+
+      const imported = rows
+        .map((row, index) => {
+          const heading = String(row.Heading || "").trim();
+          const item = String(row["Review Item"] || "").trim();
+
+          if (!heading || !item) return null;
+
+          return {
+            id: Date.now() + index,
+            heading,
+            item,
+            status: "N/A",
+            notes: "",
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+        })
+        .filter(Boolean);
+
+      if (imported.length === 0) {
+        alert("No review items found. Use columns: Heading and Review Item.");
+        return;
+      }
+
+      saveHealthData({
+        reviewItems: [...reviewItems, ...imported],
+      });
+
+      fileInput.value = "";
+    } catch (error) {
+      console.error("Import failed:", error);
+      alert("Import failed. Please confirm the file uses columns: Heading and Review Item.");
     }
+  };
 
-    saveHealthData({
-      reviewItems: [...reviewItems, ...imported],
-    });
-
-    e.target.value = "";
+  if (fileName.endsWith(".xlsx") || fileName.endsWith(".xls")) {
+    reader.readAsArrayBuffer(file);
+  } else {
+    reader.readAsText(file);
   }
+}
 
   function updateReviewItem(id, updates) {
     saveHealthData({
@@ -244,10 +287,11 @@ function downloadFile(filename, content, mimeType) {
 
 function downloadCsvTemplate() {
   const csv =
-    "Heading,Review Item,Status,Notes\n" +
-    "Safety,Weekly safety inspections completed,Green,\n" +
-    "Schedule,Monthly update submitted,Yellow,Needs review\n" +
-    "Staffing,Staffing plan reviewed,Red,Open discussion item\n";
+    "Heading,Review Item\n" +
+    "Safety,Weekly safety inspections completed\n" +
+    "Schedule,Monthly update submitted\n" +
+    "Staffing,Staffing plan reviewed\n" +
+    "Quality,Quality Control\n";
 
   downloadFile(
     "projecthealthos-review-template.csv",
@@ -261,21 +305,15 @@ function downloadExcelTemplate() {
     {
       Heading: "Safety",
       "Review Item": "Weekly safety inspections completed",
-      Status: "On Track",
-      Notes: "",
-    },
+         },
     {
       Heading: "Schedule",
       "Review Item": "Monthly update submitted",
-      Status: "At Risk",
-      Notes: "Needs review",
-    },
+          },
     {
       Heading: "Staffing",
       "Review Item": "Staffing plan reviewed",
-      Status: "Off Track",
-      Notes: "Open discussion item",
-    },
+         },
   ];
 
   const worksheet = XLSX.utils.json_to_sheet(rows);
@@ -302,13 +340,23 @@ function archiveHealthIssue(id) {
 }
   return (
     <div className="page project-health-os-page">
-      <div className="page-header">
-        <div>
-          <h1>ProjectHealthOS</h1>
-                  </div>
-      </div>
+      <div className="module-hero module-hero-health">
+  <img
+    src={`${import.meta.env.BASE_URL}projecthealth-logo.png`}
+    alt="ProjectHealthOS"
+    className="module-hero-logo"
+  />
 
-      <div className="card">
+  <div>
+    <h1>
+      ProjectHealth<span className="os-highlight">OS</span>
+    </h1>
+
+    <p>Project Health & Accountability</p>
+  </div>
+</div>
+
+      <div className="data-card">
         <h2>Add Review Item</h2>
 
         <form className="entry-form milestone-form" onSubmit={addReviewItem}>
@@ -328,23 +376,6 @@ function archiveHealthIssue(id) {
     />
   </div>
 
-  <div className="form-group">
-    <label>Status</label>
-    <select name="status">
-     <option value="Green">On Track</option>
-<option value="Yellow">At Risk</option>
-<option value="Red">Off Track</option>
-<option value="N/A">Not Applicable</option>
-    </select>
-  </div>
-
-  <div className="form-group">
-    <label>Notes</label>
-    <input
-      name="notes"
-      placeholder="Optional notes..."
-    />
-  </div>
 
   <div className="form-button-group">
     <label>&nbsp;</label>
@@ -353,110 +384,150 @@ function archiveHealthIssue(id) {
     </button>
   </div>
 </form>
-      </div>
-
-      <div className="card">
-  <h2>Import Review Items</h2>
-
-  <div className="button-row">
-    <button
-  type="button"
-  className="secondary-button"
-  onClick={downloadCsvTemplate}
->
-  Download CSV Template
-</button>
-
-    <button
-  type="button"
-  className="secondary-button"
-  onClick={downloadExcelTemplate}
->
-  Download Excel Template
-</button>
-
-    <input
-      type="file"
-      accept=".csv,.xlsx,.xls"
-    />
-  </div>
-
-  <p className="table-subtext">
-    Template columns:
-    Heading | Review Item | Status | Notes
-  </p>
+<div className="import-divider">
+  <span>OR IMPORT REVIEW ITEMS</span>
 </div>
 
-      <div className="data-card project-health-review-card">
+<div className="button-row">
+  <button
+    type="button"
+    className="secondary-button"
+    onClick={downloadCsvTemplate}
+  >
+    Download CSV Template
+  </button>
+
+  <button
+    type="button"
+    className="secondary-button"
+    onClick={downloadExcelTemplate}
+  >
+    Download Excel Template
+  </button>
+
+  <input
+  type="file"
+  accept=".csv,.xlsx,.xls"
+  onChange={importReviewItems}
+/>
+</div>
+
+<p className="table-subtext">
+  
+</p>
+      </div>
+
+      
+
+  <div className="data-card project-health-review-card">
   <div className="section-header-row">
     <h2>Review Items</h2>
   </div>
 
-  <table className="data-table">
-          <thead>
-            <tr>
-              <th>Heading</th>
-              <th>Review Item</th>
-              <th>Status</th>
-              <th>Notes</th>
-              <th>Create Issue</th>
-              <th>Delete</th>
-            </tr>
-          </thead>
+  {reviewItems.length === 0 && (
+    <div className="empty-state">
+      No ProjectHealthOS review items have been added yet.
+    </div>
+  )}
 
-          <tbody>
-            {Object.entries(groupedItems).map(([heading, items]) =>
-              items.map((item, index) => (
+  {Object.entries(groupedItems).map(([heading, items]) => {
+    const isExpanded = expandedHeadings[heading] !== false;
+
+    return (
+      <div className="health-review-group" key={heading}>
+        <button
+          type="button"
+          className="health-review-heading-row"
+          onClick={() =>
+            setExpandedHeadings({
+              ...expandedHeadings,
+              [heading]: !isExpanded,
+            })
+          }
+        >
+          <span>
+  {isExpanded ? "▼" : "▶"} {heading} ({items.length})
+</span>
+        </button>
+
+        {isExpanded && (
+          <table className="data-table health-review-items-table">
+            <thead>
+              <tr>
+                <th>Review Item</th>
+                <th>Status</th>
+                <th>Notes</th>
+                <th>Create Issue</th>
+                <th>Delete</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {items.map((item) => (
                 <tr key={item.id}>
-                  <td>{index === 0 ? heading : ""}</td>
                   <td>{item.item}</td>
+
                   <td>
-  <button
-    type="button"
-    className={`health-status-pill ${item.status.toLowerCase()}`}
-    onClick={() => {
-      const statusFlow = ["Green", "Yellow", "Red", "N/A"];
+                    <button
+                      type="button"
+                      className={`health-status-pill ${item.status
+                        .toLowerCase()
+                        .replace("/", "-")}`}
+                      onClick={() => {
+                        const statusFlow = [
+                          "Green",
+                          "Yellow",
+                          "Red",
+                          "N/A",
+                        ];
 
-      const currentIndex = statusFlow.indexOf(item.status);
+                        const currentIndex =
+                          statusFlow.indexOf(item.status);
 
-      updateReviewItem(item.id, {
-        status:
-          statusFlow[
-            (currentIndex + 1) % statusFlow.length
-          ],
-      });
-    }}
-  >
-    {
-  item.status === "Green"
-    ? "On Track"
-    : item.status === "Yellow"
-    ? "At Risk"
-    : item.status === "Red"
-    ? "Off Track"
-    : "N/A"
-}
-  </button>
-</td>
+                        updateReviewItem(item.id, {
+                          status:
+                            statusFlow[
+                              (currentIndex + 1) %
+                                statusFlow.length
+                            ],
+                        });
+                      }}
+                    >
+                      {item.status === "Green"
+                        ? "On Track"
+                        : item.status === "Yellow"
+                        ? "At Risk"
+                        : item.status === "Red"
+                        ? "Off Track"
+                        : "N/A"}
+                    </button>
+                  </td>
+
                   <td>
                     <textarea
-  className="project-health-notes"
-  value={item.notes}
-  onChange={(e) =>
-    updateReviewItem(item.id, { notes: e.target.value })
-  }
-  placeholder="Notes..."
-/>
+                      className="project-health-notes"
+                      value={item.notes || ""}
+                      onChange={(e) =>
+                        updateReviewItem(item.id, {
+                          notes: e.target.value,
+                        })
+                      }
+                      placeholder="Notes..."
+                    />
                   </td>
+
                   <td>
                     <button
                       type="button"
                       className="secondary-button small-button"
-                      onClick={() => createIssueFromReviewItem(item)}
+                      onClick={() =>
+                        createIssueFromReviewItem(item)
+                      }
                     >
                       Create Issue
                     </button>
                   </td>
+
                   <td>
                     <button
                       type="button"
@@ -467,19 +538,14 @@ function archiveHealthIssue(id) {
                     </button>
                   </td>
                 </tr>
-              ))
-            )}
-
-            {reviewItems.length === 0 && (
-              <tr>
-                <td colSpan="6">
-                  No ProjectHealthOS review items have been added yet.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
+    );
+  })}
+</div>
 
       <div className="data-card project-health-issues-card">
   <h2>Health Review Issues</h2>
@@ -555,7 +621,7 @@ function archiveHealthIssue(id) {
               {expandedIssueId === issue.id && (
                 <tr>
                   <td colSpan="7">
-                    <div className="card">
+                    <div className="data-card">
                       <h3>Discuss / Solve</h3>
 
                       <p>
