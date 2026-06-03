@@ -85,7 +85,7 @@ const [showArchivedIssues, setShowArchivedIssues] = useState(false);
   return (
     <div className="page">
       <div className="print-report-header print-only">
-  <img src="/logo.png" alt="ConstraintOS" className="print-logo" />
+  <img src={`${import.meta.env.BASE_URL}logo.png`} alt="ConstraintOS" className="print-logo" />
   <div>
     <h1>ConstraintOS Operational Report</h1>
     <p>{project}</p>
