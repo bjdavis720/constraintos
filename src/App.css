@@ -334,6 +334,34 @@ body {
   flex-shrink: 0;
 }
 
+.sidebar-home-link {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 14px;
+  border: none;
+  cursor: pointer;
+  background: #ffffff;
+  border-radius: 14px;
+}
+
+.sidebar-home-logo {
+  width: 100%;
+  max-width: 120px;
+  display: block;
+  margin: 0 auto;
+}
+
+.sidebar-home-brand {
+  border: none;
+  cursor: pointer;
+  width: 100%;
+  margin-bottom: 14px;
+}
+
+.sidebar-home-link:hover,
+.sidebar-home-brand:hover {
+  transform: translateY(-1px);
+}
 .sidebar-card {
   background: white;
   color: #12325f;
@@ -2003,4 +2031,76 @@ body {
 }
 .os-highlight {
   color: #3b82f6;
+}
+/* ProjectHealthOS Status Colors */
+
+.health-status {
+  min-width: 80px;
+  font-weight: 600;
+  border-radius: 6px;
+  text-align: center;
+}
+
+.health-status.green {
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #86efac;
+}
+
+.health-status.yellow {
+  background: #fef9c3;
+  color: #854d0e;
+  border: 1px solid #fde047;
+}
+
+.health-status.red {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fca5a5;
+}
+
+/* ProjectHealthOS Notes */
+
+.project-health-notes {
+  width: 100%;
+  min-height: 44px;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 0.9rem;
+  resize: vertical;
+  background: #ffffff;
+}
+/* ProjectHealthOS Status Pills */
+
+.health-status-pill {
+  min-width: 125px;
+  padding: 0.4rem 0.75rem;
+  border-radius: 999px;
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.health-status-pill.green {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.health-status-pill.yellow {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.health-status-pill.red {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.health-status-pill.n\/a,
+.health-status-pill.na {
+  background: #dbeafe;
+  color: #1d4ed8;
 }

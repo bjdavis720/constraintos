@@ -157,7 +157,10 @@ function SentinelHome({
           className="sentinel-module-card module-health"
           onClick={() => openModule("ProjectHealthOS")}
         >
-          <img src={`${import.meta.env.BASE_URL}logo.png`} alt="" />
+          <img
+  src={`${import.meta.env.BASE_URL}projecthealth-logo.png`}
+  alt="ProjectHealthOS"
+/>
           <span>Coming Soon</span>
           <h3>ProjectHealthOS</h3>
           <p>Recurring project health reviews, process compliance, and action tracking.</p>
@@ -168,7 +171,10 @@ function SentinelHome({
           className="sentinel-module-card module-revenue"
           onClick={() => openModule("Revenue Forecast")}
         >
-          <img src={`${import.meta.env.BASE_URL}logo.png`} alt="" />
+          <img
+  src={`${import.meta.env.BASE_URL}revenue-logo.png`}
+  alt="RevenueOS"
+/>
           <span>Active Module</span>
           <h3>RevenueOS</h3>
           <p>Revenue forecasting, billing movement, BAC analysis, and financial risk.</p>
@@ -179,7 +185,10 @@ function SentinelHome({
           className="sentinel-module-card module-risk"
           onClick={() => openModule("RiskIntegratorOS")}
         >
-          <img src={`${import.meta.env.BASE_URL}logo.png`} alt="" />
+          <img
+  src={`${import.meta.env.BASE_URL}riskintegrator-logo.png`}
+  alt="RiskIntegratorOS"
+/>
           <span>Coming Soon</span>
           <h3>RiskIntegratorOS</h3>
           <p>Risk register, risk playbooks, escalation logic, and accountability governance.</p>

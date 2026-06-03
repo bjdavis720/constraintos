@@ -15,6 +15,7 @@ import ScheduleIntelligence from "./pages/ScheduleIntelligence.jsx";
 import RevenueForecast from "./components/RevenueForecast.jsx";
 import FourWeekLookAhead from "./components/FourWeekLookAhead";
 import SubmittalReadiness from "./components/SubmittalReadiness.jsx";
+import ProjectHealthOS from "./components/ProjectHealthOS.jsx";
 
 import {
   getAgeInDays,
@@ -36,6 +37,13 @@ function createEmptyProjectData() {
     scheduleSnapshots: [],
     scheduleActivities: [],
     scheduleRelationships: [],
+
+    projectHealthOS: {
+      reviewItems: [],
+      issues: [],
+      todos: [],
+      reviewHistory: [],
+    },
   };
 }
 
@@ -117,6 +125,12 @@ const teamMembers = currentData.teamMembers || [];
 const submittals = currentData.submittals || [];
 const revenueHistory = currentData.revenueHistory || [];
 const scheduleSnapshots = currentData.scheduleSnapshots || [];
+const projectHealthOS = currentData.projectHealthOS || {
+  reviewItems: [],
+  issues: [],
+  todos: [],
+  reviewHistory: [],
+};
   const latestScheduleSnapshot = scheduleSnapshots?.[scheduleSnapshots.length - 1] || {};
 
 const latestScheduleActivities =
@@ -379,6 +393,12 @@ function clearCurrentProjectData() {
       },
     }));
   }
+  
+function updateProjectHealthOS(updatedHealthData) {
+  updateCurrentProjectData({
+    projectHealthOS: updatedHealthData,
+  });
+}
 
   function updateMilestoneStatus(id) {
     const statusFlow = ["Imported", "On Track", "At Risk", "Off Track", "Complete"];
@@ -842,6 +862,17 @@ setTodoForm({
     setActivePage={setActivePage}
   />
 )}
+{activePage === "ProjectHealthOS" &&
+  (selectedProject ? (
+    <ProjectHealthOS
+  project={projectName}
+  projectHealthOS={projectHealthOS}
+  updateProjectHealthOS={updateProjectHealthOS}
+  teamMembers={teamMembers}
+/>
+  ) : (
+    renderNoProjectSelected()
+  ))}
         
         {activePage === "Project Setup" && (
           <ProjectSetup
@@ -1410,6 +1441,7 @@ deleteTeamMember={deleteTeamMember}
   "To-Dos",
   "Executive Attention",
   "SentinelOS Home",
+  "ProjectHealthOS",
 ].includes(activePage) && (
           <div className="card">
             <h3>{activePage}</h3>
