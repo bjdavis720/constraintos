@@ -608,6 +608,51 @@ function markPullCardMissed(cardId, missedReason) {
     )
   );
 }
+function savePpcSnapshot() {
+  if (!setPpcHistory) return;
+
+  const plannedCommitments = pullCards.filter((card) => !card.archived);
+  const completedCommitments = plannedCommitments.filter(
+    (card) => card.completed
+  );
+  const missedCommitments = plannedCommitments.filter(
+    (card) => card.status === "Missed"
+  );
+
+  const evaluatedCommitments =
+    completedCommitments.length + missedCommitments.length;
+
+  const ppc =
+    evaluatedCommitments > 0
+      ? Math.round(
+          (completedCommitments.length / evaluatedCommitments) * 100
+        )
+      : 0;
+
+  const snapshot = {
+    id: `ppc-${Date.now()}`,
+    milestoneId: selectedMilestoneId,
+    milestoneName: selectedMilestone?.name || "",
+    savedAt: new Date().toISOString(),
+    planned: plannedCommitments.length,
+    completed: completedCommitments.length,
+    missed: missedCommitments.length,
+    evaluated: evaluatedCommitments,
+    ppc,
+  };
+
+  const existingHistory = ppcHistory || [];
+
+const filteredHistory = existingHistory.filter(
+  (item) =>
+    item.milestoneId !== selectedMilestoneId
+);
+
+setPpcHistory([
+  ...filteredHistory,
+  snapshot,
+]);
+}
 
 function deletePullCard(cardId) {
     updatePullPlan(pullCards.filter((card) => card.id !== cardId));
@@ -1514,6 +1559,13 @@ const filteredReferenceActivities = referenceBaseActivities.filter(
                             </div>
                           <div className="card">
   <h2>Percent Plan Complete</h2>
+  <button
+  type="button"
+  className="secondary-button"
+  onClick={savePpcSnapshot}
+>
+  Save PPC Snapshot
+</button>
 
   {(() => {
     const plannedCommitments = pullCards.filter((card) => !card.archived);
@@ -1559,6 +1611,43 @@ const ppc =
       </div>
     );
   })()}
+</div>
+<div className="card">
+  <h2>PPC History</h2>
+
+  {!ppcHistory || ppcHistory.length === 0 ? (
+    <p>No PPC snapshots saved.</p>
+  ) : (
+    <div className="pull-reference-list">
+      {[...ppcHistory]
+        .sort(
+          (a, b) =>
+            new Date(b.savedAt || 0) -
+            new Date(a.savedAt || 0)
+        )
+        .map((snapshot) => (
+          <div
+            key={snapshot.id}
+            className="pull-reference-card"
+          >
+            <strong>{snapshot.ppc}% PPC</strong>
+
+            <small>
+              {snapshot.completed} Complete /{" "}
+              {snapshot.missed} Missed
+            </small>
+
+            <small>
+              {formatFullDate(snapshot.savedAt)}
+            </small>
+
+            <small>
+              {snapshot.milestoneName || "No Milestone"}
+            </small>
+          </div>
+        ))}
+    </div>
+  )}
 </div>
 <div className="card">
   <h2>Missed Commitments</h2>
