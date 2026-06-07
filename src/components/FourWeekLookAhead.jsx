@@ -1618,35 +1618,41 @@ const ppc =
   {!ppcHistory || ppcHistory.length === 0 ? (
     <p>No PPC snapshots saved.</p>
   ) : (
-    <div className="pull-reference-list">
-      {[...ppcHistory]
-        .sort(
-          (a, b) =>
-            new Date(b.savedAt || 0) -
-            new Date(a.savedAt || 0)
-        )
-        .map((snapshot) => (
-          <div
-            key={snapshot.id}
-            className="pull-reference-card"
-          >
-            <strong>{snapshot.ppc}% PPC</strong>
+    <table className="data-table">
+      <thead>
+        <tr>
+          <th>Saved</th>
+          <th>Milestone / Sprint</th>
+          <th>Planned</th>
+          <th>Complete</th>
+          <th>Missed</th>
+          <th>Evaluated</th>
+          <th>PPC</th>
+        </tr>
+      </thead>
 
-            <small>
-              {snapshot.completed} Complete /{" "}
-              {snapshot.missed} Missed
-            </small>
-
-            <small>
-              {formatFullDate(snapshot.savedAt)}
-            </small>
-
-            <small>
-              {snapshot.milestoneName || "No Milestone"}
-            </small>
-          </div>
-        ))}
-    </div>
+      <tbody>
+        {[...ppcHistory]
+          .sort(
+            (a, b) =>
+              new Date(b.savedAt || 0) -
+              new Date(a.savedAt || 0)
+          )
+          .map((snapshot) => (
+            <tr key={snapshot.id}>
+              <td>{formatFullDate(snapshot.savedAt)}</td>
+              <td>{snapshot.milestoneName || "No Milestone"}</td>
+              <td>{snapshot.planned}</td>
+              <td>{snapshot.completed}</td>
+              <td>{snapshot.missed}</td>
+              <td>{snapshot.evaluated}</td>
+              <td>
+                <strong>{snapshot.ppc}%</strong>
+              </td>
+            </tr>
+          ))}
+      </tbody>
+    </table>
   )}
 </div>
 <div className="card">
