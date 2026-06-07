@@ -135,6 +135,10 @@ return {
 
   const currentForecast = buildMonthlyForecast(latestSnapshot);
   const previousForecast = buildMonthlyForecast(previousSnapshot);
+  const originalSnapshot =
+  scheduleSnapshots.length > 0 ? scheduleSnapshots[0] : null;
+
+const originalForecast = buildMonthlyForecast(originalSnapshot);
 const previousActualCost = getTotalActualCost(previousSnapshot);
 const currentActualCost = getTotalActualCost(latestSnapshot);
 
@@ -183,32 +187,50 @@ if (importedRevenueMonth && actualRevenueDelta !== 0) {
     (actualBilledByMonth[importedRevenueMonth] || 0) + actualRevenueDelta;
 }
 function saveImportedRevenueDelta() {
-  if (!importedRevenueMonth || actualRevenueDelta === 0) {
-    alert("No imported revenue delta is available to save.");
+  if (!scheduleSnapshots || scheduleSnapshots.length < 2) {
+    alert("At least two imported pay applications are needed to calculate monthly billing.");
     return;
   }
 
-  const existingImportedEntry = revenueHistory.find(
-    (entry) => entry.month === importedRevenueMonth && entry.source === "imported"
-  );
+  const newEntries = [];
 
-  if (existingImportedEntry) {
-    alert("Imported revenue has already been saved for this month.");
-    return;
+  for (let i = 1; i < scheduleSnapshots.length; i++) {
+    const previous = scheduleSnapshots[i - 1];
+    const current = scheduleSnapshots[i];
+
+    const currentMonth = getSnapshotRevenueMonth(current);
+    if (!currentMonth) continue;
+
+    const previousCumulative = getTotalActualCost(previous);
+    const currentCumulative = getTotalActualCost(current);
+    const monthlyAmount = currentCumulative - previousCumulative;
+
+    const alreadySaved = revenueHistory.some(
+      (entry) =>
+        entry.month === currentMonth &&
+        entry.source === "imported"
+    );
+
+    if (!alreadySaved && monthlyAmount !== 0) {
+      newEntries.push({
+        id: Date.now() + i,
+        month: currentMonth,
+        amount: monthlyAmount,
+        source: "imported",
+      });
+    }
   }
 
-  const newEntry = {
-    id: Date.now(),
-    month: importedRevenueMonth,
-    amount: actualRevenueDelta,
-    source: "imported",
-  };
+  if (newEntries.length === 0) {
+    alert("No new imported monthly billing amounts were found to save.");
+    return;
+  }
 
   updateCurrentProjectData({
-    revenueHistory: [...revenueHistory, newEntry],
+    revenueHistory: [...revenueHistory, ...newEntries],
   });
 
-  alert("Imported revenue delta saved to Revenue History.");
+  alert(`${newEntries.length} imported monthly billing amount(s) saved.`);
 }
   const allMonthKeys = Array.from(
   new Set([
@@ -244,19 +266,33 @@ function saveImportedRevenueDelta() {
     const date = new Date(`${monthKey}-01`);
 
     acc.rows.push({
-      monthKey,
-monthLabel: formatMonthLabel(monthKey),
-actualBilled: actualBilledByMonth[monthKey] || 0,
-      currentPlannedBilling,
-      previousPlannedBilling,
-      monthlyDelta:
+  monthKey,
+  monthLabel: formatMonthLabel(monthKey),
+  actualBilled: actualBilledByMonth[monthKey] || 0,
+  originalPlannedBilling:
+    originalForecast.monthlyTotals[monthKey] || 0,
+  currentPlannedBilling,
+  previousPlannedBilling,
+  monthlyDelta:
   actualBilledByMonth[monthKey] !== undefined
     ? actualBilledByMonth[monthKey] - currentPlannedBilling
     : 0,
-      currentCumulative,
-      previousCumulative,
-      cumulativeDelta:
-        currentCumulative - previousCumulative,
+      originalCumulative:
+  acc.rows.reduce(
+    (total, row) => total + Number(row.originalPlannedBilling || 0),
+    0
+  ) + Number(originalForecast.monthlyTotals[monthKey] || 0),
+
+actualCumulative:
+  acc.rows.reduce(
+    (total, row) => total + Number(row.actualBilled || 0),
+    0
+  ) + Number(actualBilledByMonth[monthKey] || 0),
+
+currentCumulative,
+previousCumulative,
+cumulativeDelta:
+  currentCumulative - previousCumulative,
     });
 
     return {
@@ -319,6 +355,59 @@ function deleteRevenueHistoryEntry(id) {
     revenueHistory: revenueHistory.filter((entry) => entry.id !== id),
   });
 }
+const chartWidth = 1600;
+const chartHeight = 500;
+const chartPaddingX = 120;
+const chartTop = 60;
+const chartBottom = 420;
+
+function getScurveMaxValue(rows) {
+  return Math.max(
+    ...rows.flatMap((row) => [
+      row.originalCumulative || 0,
+      row.actualCumulative || 0,
+      row.currentCumulative || 0,
+    ]),
+    1
+  );
+}
+
+function getYAxisTicks(maxValue, tickCount = 5) {
+  const ticks = [];
+
+  for (let i = 0; i <= tickCount; i++) {
+    ticks.push((maxValue / tickCount) * i);
+  }
+
+  return ticks;
+}
+
+function getPointPosition(row, index, rows, valueKey) {
+  const maxValue = getScurveMaxValue(rows);
+
+  const x =
+    chartPaddingX +
+    (index / Math.max(rows.length - 1, 1)) *
+      (chartWidth - chartPaddingX * 2);
+
+  const y =
+    chartBottom -
+    ((row[valueKey] || 0) / maxValue) * (chartBottom - chartTop);
+
+  return { x, y };
+}
+
+function buildLinePath(rows, valueKey) {
+  if (!rows.length) return "";
+
+  return rows
+    .map((row, index) => {
+      const { x, y } = getPointPosition(row, index, rows, valueKey);
+      return `${index === 0 ? "M" : "L"} ${x} ${y}`;
+    })
+    .join(" ");
+}
+
   return (
     <div className="page">
       <div className="page-header">
@@ -326,29 +415,7 @@ function deleteRevenueHistoryEntry(id) {
         <p>Projected monthly billings from imported XER cost-loaded activities</p>
       </div>
 
-      <div className="data-card">
-        <h2>Forecast Source</h2>
-        <p>
-          Current snapshot:{" "}
-          <strong>{latestSnapshot?.fileName || "No schedule uploaded"}</strong>
-        </p>
-        <p>
-          Prior snapshot:{" "}
-          <strong>{previousSnapshot?.fileName || "No prior snapshot"}</strong>
-        </p>
-        <p>Current activities: {currentForecast.activities.length}</p>
-        <p>
-          Current cost-loaded activities:{" "}
-          {currentForecast.costLoadedActivities.length}
-        </p>
-      </div>
-      <div className="data-card">
-  <h2>Forecast Source</h2>
-  ...
-</div>
-
-{/* INSERT REVENUE HISTORY CARD HERE */}
-
+      
 <div className="data-card">
   <h2>Revenue History</h2>
 
@@ -357,6 +424,27 @@ function deleteRevenueHistoryEntry(id) {
     <input type="number" name="amount" placeholder="Revenue amount" />
     <button type="submit">Add Revenue</button>
   </form>
+  <div style={{ marginBottom: "16px" }}>
+  <button
+    type="button"
+    className="secondary-button"
+    onClick={saveImportedRevenueDelta}
+  >
+    Save Imported Monthly Revenue
+  </button>
+
+  <p
+    style={{
+      marginTop: "8px",
+      fontSize: "0.9rem",
+      color: "#666",
+    }}
+  >
+    Uses imported pay application snapshots to calculate monthly
+    revenue from cumulative billings. Requires at least two imported
+    schedules.
+  </p>
+</div>
 
   {revenueHistory.length === 0 ? (
     <p>No revenue history has been saved yet.</p>
@@ -399,23 +487,9 @@ function deleteRevenueHistoryEntry(id) {
   )}
 </div>
 
-<div className="metrics-grid"></div>
 
             <div className="metrics-grid">
-              <div className="metric-card">
-  <h3>Actual Revenue Delta</h3>
-  <button
-  type="button"
-  className="secondary-button"
-  onClick={saveImportedRevenueDelta}
->
-  Save Imported Revenue
-</button>
-
-  <div className="metric-value">
-    {formatCurrency(actualRevenueDelta)}
-  </div>
-</div>
+             
 
 
   <div className="metric-card">
@@ -433,7 +507,138 @@ function deleteRevenueHistoryEntry(id) {
           </div>
         </div>
       </div>
+<div className="data-card">
+  <h2>Revenue S-Curve</h2>
+  <p>
+    Cumulative comparison of original planned revenue, actual billed revenue,
+    and current forecast revenue.
+  </p>
 
+  <svg
+  viewBox={`0 0 ${chartWidth} ${chartHeight}`}
+  preserveAspectRatio="none"
+  className="revenue-scurve"
+>
+  {getYAxisTicks(getScurveMaxValue(forecastRows)).map((tick) => {
+    const y =
+      chartBottom -
+      ((tick || 0) / getScurveMaxValue(forecastRows)) *
+        (chartBottom - chartTop);
+
+    return (
+      <g key={`y-${tick}`}>
+        <line
+          x1={chartPaddingX}
+          x2={chartWidth - chartPaddingX}
+          y1={y}
+          y2={y}
+          className="scurve-grid-line"
+        />
+        <text
+          x={chartPaddingX - 16}
+          y={y + 4}
+          textAnchor="end"
+          className="scurve-axis-label"
+        >
+          {formatCurrency(tick)}
+        </text>
+      </g>
+    );
+  })}
+
+  {forecastRows.map((row, index) => {
+    const { x } = getPointPosition(
+      row,
+      index,
+      forecastRows,
+      "currentCumulative"
+    );
+
+    return (
+      <g key={`x-${row.monthKey}`}>
+        <line
+          x1={x}
+          x2={x}
+          y1={chartTop}
+          y2={chartBottom}
+          className="scurve-month-line"
+        />
+
+        {index % 2 === 0 && (
+          <text
+            x={x}
+            y={chartBottom + 34}
+            textAnchor="end"
+            className="scurve-month-label"
+            transform={`rotate(-35 ${x} ${chartBottom + 34})`}
+          >
+            {row.monthLabel}
+          </text>
+        )}
+      </g>
+    );
+  })}
+
+  <path
+    d={buildLinePath(forecastRows, "originalCumulative")}
+    className="scurve-line original"
+  />
+
+  <path
+    d={buildLinePath(forecastRows, "actualCumulative")}
+    className="scurve-line actual"
+  />
+
+  <path
+    d={buildLinePath(forecastRows, "currentCumulative")}
+    className="scurve-line forecast"
+  />
+
+  {["originalCumulative", "actualCumulative", "currentCumulative"].map((key) =>
+    forecastRows.map((row, index) => {
+      const { x, y } = getPointPosition(row, index, forecastRows, key);
+
+      const className =
+        key === "originalCumulative"
+          ? "original"
+          : key === "actualCumulative"
+          ? "actual"
+          : "forecast";
+
+      return (
+        <circle
+          key={`${key}-${row.monthKey}`}
+          cx={x}
+          cy={y}
+          r="3"
+          className={`scurve-dot ${className}`}
+        />
+      );
+    })
+  )}
+
+  <line
+    x1={chartPaddingX}
+    x2={chartWidth - chartPaddingX}
+    y1={chartBottom}
+    y2={chartBottom}
+    className="scurve-axis"
+  />
+  <line
+    x1={chartPaddingX}
+    x2={chartPaddingX}
+    y1={chartTop}
+    y2={chartBottom}
+    className="scurve-axis"
+  />
+</svg>
+
+  <div className="revenue-chart-legend">
+    <span className="legend-item original">Original Plan</span>
+    <span className="legend-item actual">Actual Billed</span>
+    <span className="legend-item forecast">Current Forecast</span>
+  </div>
+</div>
       <div className="data-card">
         <h2>Monthly Revenue Forecast Delta</h2>
 
