@@ -127,6 +127,7 @@ const todos = currentData.todos || [];
 const teamMembers = currentData.teamMembers || [];
 const submittals = currentData.submittals || [];
 const revenueHistory = currentData.revenueHistory || [];
+const scheduleActivities = currentData.scheduleActivities || [];
 const scheduleSnapshots = currentData.scheduleSnapshots || [];
 const pullPlans = currentData.pullPlans || {};
 const workZones = currentData.workZones || [];

@@ -3166,3 +3166,17 @@ textarea.form-input {
   min-width: 80px;
   white-space: nowrap;
 }
+.status-pill.green {
+  background: #dff5e1;
+  color: #1f7a32;
+}
+
+.status-pill.yellow {
+  background: #fff4cc;
+  color: #9a6a00;
+}
+
+.status-pill.red {
+  background: #fde2e2;
+  color: #b42318;
+}

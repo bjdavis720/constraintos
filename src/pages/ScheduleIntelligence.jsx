@@ -379,7 +379,7 @@ function ScheduleIntelligence({
         relationships: parsedRelationships.slice(0, 5000),
       };
 
-      const updatedSnapshots = [...scheduleSnapshots, newSnapshot];
+      const updatedSnapshots = [...scheduleSnapshots, newSnapshot].slice(-3);
 
       updateCurrentProjectData({
         scheduleSnapshots: updatedSnapshots,

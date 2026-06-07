@@ -1,3 +1,27 @@
+import Metric from "../components/Metric.jsx";
+
+function getConstraintAge(constraint) {
+  const createdDate = constraint.createdAt
+    ? new Date(constraint.createdAt)
+    : constraint.requiredBy
+    ? new Date(constraint.requiredBy)
+    : null;
+
+  if (!createdDate || Number.isNaN(createdDate.getTime())) return 0;
+
+  const today = new Date();
+  return Math.max(
+    0,
+    Math.ceil((today - createdDate) / (1000 * 60 * 60 * 24))
+  );
+}
+
+function getAgingClass(age) {
+  if (age >= 30) return "red";
+  if (age >= 15) return "yellow";
+  return "green";
+}
+
 function ConstraintBoard({
   project,
   teamMembers = [],
@@ -12,45 +36,99 @@ function ConstraintBoard({
   deleteConstraint,
   setActivePage,
 }) {
-  
   const projectTeamMembers = teamMembers || [];
-  const projectName =
-  typeof project === "object" ? project.name : "";
+  const projectName = typeof project === "object" ? project.name : "";
+
+  const activeConstraints = constraints
+    .filter((constraint) => !constraint.archived)
+    .sort((a, b) => getConstraintAge(b) - getConstraintAge(a));
+
+  const openConstraints = activeConstraints.filter(
+  (constraint) =>
+    constraint.status !== "Closed" &&
+    constraint.status !== "Archived"
+);
+
+  const overdueConstraints = openConstraints.filter((constraint) => {
+    if (!constraint.requiredBy) return false;
+    return new Date(constraint.requiredBy) < new Date();
+  });
+
+  const averageAge =
+    openConstraints.length > 0
+      ? Math.round(
+          openConstraints.reduce(
+            (total, constraint) => total + getConstraintAge(constraint),
+            0
+          ) / openConstraints.length
+        )
+      : 0;
+
+  const oldestConstraint =
+    openConstraints.length > 0
+      ? Math.max(...openConstraints.map((constraint) => getConstraintAge(constraint)))
+      : 0;
 
   function handleChange(e) {
     const { name, value } = e.target;
     setConstraintForm({ ...constraintForm, [name]: value });
   }
+
   function returnToSource() {
-  const savedPath = sessionStorage.getItem("sentinel_return_path");
+    const savedPath = sessionStorage.getItem("sentinel_return_path");
+    if (!savedPath) return;
 
-  if (!savedPath) return;
+    const returnPath = JSON.parse(savedPath);
 
-  const returnPath = JSON.parse(savedPath);
-
-  if (returnPath.page && setActivePage) {
-    setActivePage(returnPath.page);
+    if (returnPath.page && setActivePage) {
+      setActivePage(returnPath.page);
+    }
   }
-}
 
   return (
     <div className="page">
       <div className="page-header">
-  <div>
-    <h1>Constraint Board</h1>
-    <p>{projectName}</p>
-  </div>
+        <div>
+          <h1>Constraint Board</h1>
+          <p>{projectName}</p>
+        </div>
 
-  {sessionStorage.getItem("sentinel_return_path") && (
-    <button
-      type="button"
-      className="secondary-button"
-      onClick={returnToSource}
-    >
-      Return to Sprint Plan
-    </button>
-  )}
-</div>
+        {sessionStorage.getItem("sentinel_return_path") && (
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={returnToSource}
+          >
+            Return to Sprint Plan
+          </button>
+        )}
+      </div>
+
+      <div className="grid">
+        <Metric
+          title="Open Constraints"
+          value={openConstraints.length}
+          note="Not closed"
+        />
+
+        <Metric
+          title="Overdue Constraints"
+          value={overdueConstraints.length}
+          note="Required date has passed"
+        />
+
+        <Metric
+          title="Average Age"
+          value={`${averageAge} days`}
+          note="Open constraints"
+        />
+
+        <Metric
+          title="Oldest Constraint"
+          value={`${oldestConstraint} days`}
+          note="Oldest open item"
+        />
+      </div>
 
       <form className="entry-form" onSubmit={addConstraint}>
         <div className="constraint-form-grid">
@@ -65,28 +143,28 @@ function ConstraintBoard({
           </div>
 
           <div className="form-field">
-  <label>Owner</label>
-  <select
-    name="owner"
-    value={constraintForm.owner}
-    onChange={handleChange}
-  >
-    <option value="">Select owner</option>
-    {projectTeamMembers.map((member) => {
-      const memberName =
-        member.name || member.fullName || member.email || "Unnamed";
+            <label>Owner</label>
+            <select
+              name="owner"
+              value={constraintForm.owner}
+              onChange={handleChange}
+            >
+              <option value="">Select owner</option>
+              {projectTeamMembers.map((member) => {
+                const memberName =
+                  member.name || member.fullName || member.email || "Unnamed";
 
-      return (
-        <option
-          key={member.id || member.email || memberName}
-          value={memberName}
-        >
-          {memberName}
-        </option>
-      );
-    })}
-  </select>
-</div>
+                return (
+                  <option
+                    key={member.id || member.email || memberName}
+                    value={memberName}
+                  >
+                    {memberName}
+                  </option>
+                );
+              })}
+            </select>
+          </div>
 
           <div className="form-field">
             <label>Required By</label>
@@ -139,6 +217,7 @@ function ConstraintBoard({
               <th>Constraint</th>
               <th>Owner</th>
               <th>Required By</th>
+              <th>Aging</th>
               <th>Linked Milestone</th>
               <th>Status</th>
               <th>Action</th>
@@ -146,56 +225,65 @@ function ConstraintBoard({
           </thead>
 
           <tbody>
-            {constraints.filter((constraint) => !constraint.archived).map((constraint) => (
-              <tr key={constraint.id}>
-                <td>{constraint.description}</td>
-                <td>{constraint.owner}</td>
-                <td>{constraint.requiredBy}</td>
-                <td>{constraint.milestone}</td>
+            {activeConstraints.map((constraint) => {
+              const age = getConstraintAge(constraint);
 
-                <td>
-                  <button
-                    type="button"
-                    className={`status-pill-button ${constraint.status
-                      .replaceAll(" ", "-")
-                      .toLowerCase()}`}
-                    onClick={() => updateConstraintStatus(constraint.id)}
-                  >
-                    {constraint.status}
-                  </button>
-                </td>
+              return (
+                <tr key={constraint.id}>
+                  <td>{constraint.description}</td>
+                  <td>{constraint.owner}</td>
+                  <td>{constraint.requiredBy}</td>
+                  <td>
+                    <span className={`status-pill ${getAgingClass(age)}`}>
+                      {age} days
+                    </span>
+                  </td>
+                  <td>{constraint.milestone}</td>
 
-                <td>
-  <button
-    type="button"
-    className="secondary-button small-button"
-    onClick={() => moveConstraintToIssue(constraint)}
-  >
-    Move to Issues
-  </button>
+                  <td>
+                    <button
+                      type="button"
+                      className={`status-pill-button ${constraint.status
+                        .replaceAll(" ", "-")
+                        .toLowerCase()}`}
+                      onClick={() => updateConstraintStatus(constraint.id)}
+                    >
+                      {constraint.status}
+                    </button>
+                  </td>
 
-  {constraint.status === "Closed" && (
-    <>
-      <button
-        type="button"
-        className="secondary-button small-button"
-        onClick={() => archiveConstraint(constraint.id)}
-      >
-        Archive
-      </button>
+                  <td>
+                    <button
+                      type="button"
+                      className="secondary-button small-button"
+                      onClick={() => moveConstraintToIssue(constraint)}
+                    >
+                      Move to Issues
+                    </button>
 
-      <button
-        type="button"
-        className="delete-button small-button"
-        onClick={() => deleteConstraint(constraint.id)}
-      >
-        Delete
-      </button>
-    </>
-  )}
-</td>
-              </tr>
-            ))}
+                    {constraint.status === "Closed" && (
+                      <>
+                        <button
+                          type="button"
+                          className="secondary-button small-button"
+                          onClick={() => archiveConstraint(constraint.id)}
+                        >
+                          Archive
+                        </button>
+
+                        <button
+                          type="button"
+                          className="delete-button small-button"
+                          onClick={() => deleteConstraint(constraint.id)}
+                        >
+                          Delete
+                        </button>
+                      </>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
