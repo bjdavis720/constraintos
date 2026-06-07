@@ -17,6 +17,7 @@ import FourWeekLookAhead from "./components/FourWeekLookAhead.jsx";
 import SubmittalReadiness from "./components/SubmittalReadiness.jsx";
 import ProjectHealthOS from "./components/ProjectHealthOS.jsx";
 import ModuleHeader from "./components/ModuleHeader.jsx";
+import LongLeadItemBoard from "./pages/LongLeadItemBoard.jsx";
 
 import {
   getAgeInDays,
@@ -30,6 +31,7 @@ function createEmptyProjectData() {
   return {
     milestones: [],
     constraints: [],
+    longLeadItems: [],
     issues: [],
     todos: [],
     teamMembers: [],
@@ -39,7 +41,8 @@ function createEmptyProjectData() {
     scheduleActivities: [],
     scheduleRelationships: [],
     pullPlans: {},
-    workZones: [],
+workZones: [],
+ppcHistory: [],
 
     projectHealthOS: {
       reviewItems: [],
@@ -102,7 +105,6 @@ function App() {
 });
 const [editingTeamMemberId, setEditingTeamMemberId] = useState(null);
 
-
   const [lastCompletedTodo, setLastCompletedTodo] = useState(null);
   const [mockRole, setMockRole] = useState("Admin");
   const [dashboardFilter, setDashboardFilter] = useState("");
@@ -119,6 +121,7 @@ const [editingTeamMemberId, setEditingTeamMemberId] = useState(null);
 
   const milestones = currentData.milestones || [];
 const constraints = currentData.constraints || [];
+const longLeadItems = currentData.longLeadItems || [];
 const issues = currentData.issues || [];
 const todos = currentData.todos || [];
 const teamMembers = currentData.teamMembers || [];
@@ -127,6 +130,7 @@ const revenueHistory = currentData.revenueHistory || [];
 const scheduleSnapshots = currentData.scheduleSnapshots || [];
 const pullPlans = currentData.pullPlans || {};
 const workZones = currentData.workZones || [];
+const ppcHistory = currentData.ppcHistory || [];
 const projectHealthOS = currentData.projectHealthOS || {
   reviewItems: [],
   issues: [],
@@ -148,6 +152,8 @@ const latestScheduleRelationships =
   latestScheduleSnapshot.scheduleRelationships ||
   currentData?.scheduleRelationships ||
   [];
+  console.log("REL SAMPLE", latestScheduleRelationships[0]);
+console.log("REL COUNT", latestScheduleRelationships.length);
 
   const openTodos = todos.filter((todo) => todo.status === "Open");
   const overdueTodos = todos.filter((todo) => isOverdue(todo));
@@ -272,25 +278,13 @@ const latestScheduleRelationships =
 
   useEffect(() => {
   try {
-    const lightweightProjectData = Object.fromEntries(
-      Object.entries(projectData).map(([projectId, data]) => [
-        projectId,
-        {
-          ...data,
-          scheduleSnapshots: [],
-          scheduleActivities: [],
-          scheduleRelationships: [],
-        },
-      ])
-    );
-
     localStorage.setItem(
       STORAGE_KEY,
       JSON.stringify({
         activePage,
         projects,
         selectedProject,
-        projectData: lightweightProjectData,
+        projectData,
       })
     );
   } catch (error) {
@@ -549,6 +543,27 @@ function importIssuesFromSchedule(importedIssues) {
       status: "Open",
     });
   }
+  function archiveConstraint(constraintId) {
+  updateCurrentProjectData({
+    constraints: constraints.map((constraint) =>
+      constraint.id === constraintId
+        ? { ...constraint, archived: true, archivedAt: new Date().toISOString() }
+        : constraint
+    ),
+  });
+}
+
+function deleteConstraint(constraintId) {
+  const confirmed = window.confirm(
+    "Delete this constraint permanently? This cannot be undone."
+  );
+
+  if (!confirmed) return;
+
+  updateCurrentProjectData({
+    constraints: constraints.filter((constraint) => constraint.id !== constraintId),
+  });
+}
 
   function updateConstraintStatus(id) {
     const statusFlow = ["Open", "Waiting", "Escalated", "Closed"];
@@ -592,7 +607,11 @@ function importIssuesFromSchedule(importedIssues) {
 
     alert("Constraint moved to Issues Board.");
   }
-
+function updateLongLeadItems(items) {
+  updateCurrentProjectData({
+    longLeadItems: items,
+  });
+}
   function updateIssueStatus(id) {
     const statusFlow = ["Open", "Discussing", "Action Assigned", "Closed"];
 
@@ -640,7 +659,6 @@ function importIssuesFromSchedule(importedIssues) {
     issues: issues.filter((issue) => issue.id !== id),
   });
 }
-
 
   function updateIssueNotes(issueId, notes) {
     updateCurrentProjectData({
@@ -1313,7 +1331,13 @@ deleteTeamMember={deleteTeamMember}
       updateCurrentProjectData={updateCurrentProjectData}
       setConstraintForm={setConstraintForm}
       setActivePage={setActivePage}
-    />
+      ppcHistory={ppcHistory}
+setPpcHistory={(nextPpcHistory) =>
+  updateCurrentProjectData({
+    ppcHistory: nextPpcHistory,
+  })
+}
+          />
   ) : (
     renderNoProjectSelected()
   ))}
@@ -1361,7 +1385,11 @@ deleteTeamMember={deleteTeamMember}
   addConstraint={addConstraint}
   updateConstraintStatus={updateConstraintStatus}
   moveConstraintToIssue={moveConstraintToIssue}
+  setActivePage={setActivePage}
+  archiveConstraint={archiveConstraint}
+deleteConstraint={deleteConstraint}
 />
+
           ) : (
             renderNoProjectSelected()
           ))}
@@ -1384,6 +1412,20 @@ deleteTeamMember={deleteTeamMember}
           ) : (
             renderNoProjectSelected()
           ))}
+          {activePage === "Long Lead Items" &&
+  (selectedProject ? (
+    <LongLeadItemBoard
+  longLeadItems={longLeadItems}
+  updateLongLeadItems={updateLongLeadItems}
+  scheduleActivities={latestScheduleActivities}
+  submittals={submittals}
+  issues={issues}
+  constraints={constraints}
+  updateCurrentProjectData={updateCurrentProjectData}
+/>
+  ) : (
+    renderNoProjectSelected()
+  ))}
         
         {activePage === "To-Dos" &&
           (selectedProject ? (
@@ -1418,6 +1460,7 @@ deleteTeamMember={deleteTeamMember}
   "Submittal Readiness",
   "Schedule Milestones",
   "Constraint Board",
+  "Long Lead Items",
   "Issues Board",
   "To-Dos",
   "Executive Attention",
@@ -1438,3 +1481,5 @@ deleteTeamMember={deleteTeamMember}
 }
 
 export default App;
+
+

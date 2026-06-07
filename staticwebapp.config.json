@@ -1,5 +1,17 @@
 {
   "navigationFallback": {
-    "rewrite": "/index.html"
+    "rewrite": "index.html",
+    "exclude": [
+      "/assets/*",
+      "/favicon.ico",
+      "/favicon.svg",
+      "/logo.png",
+      "/shield.png",
+      "/projecthealth-logo.png",
+      "/revenue-logo.png",
+      "/riskintegrator-logo.png",
+      "/sentinel-logo.png",
+      "/icons.svg"
+    ]
   }
 }

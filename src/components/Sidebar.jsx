@@ -12,6 +12,7 @@ function Sidebar({
     "Schedule Milestones",
     "TIA Intelligence",
     "Constraint Board",
+    "Long Lead Items",
     "Issues Board",
     "To-Dos",
   ];

@@ -1,8 +1,10 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import * as XLSX from "xlsx-js-style";
+import Metric from "./Metric.jsx";
 
 function FourWeekLookAhead({
   activities = [],
+  scheduleRelationships = [],
   project,
   milestones = [],
   constraints = [],
@@ -10,21 +12,52 @@ function FourWeekLookAhead({
   submittals = [],
   workZones = [],
   pullPlans = {},
+  ppcHistory = [],
+  setPpcHistory,
   updateCurrentProjectData,
   setConstraintForm,
   setActivePage,
 }) {
-  const [activeView, setActiveView] = useState("lookahead");
+  const [activeView, setActiveView] = useState(() => {
+  const savedPath = sessionStorage.getItem("sentinel_return_path");
+
+  if (savedPath) {
+    const returnPath = JSON.parse(savedPath);
+
+    if (returnPath.view === "pullplan") {
+      return "pullplan";
+    }
+  }
+
+  return "lookahead";
+});
   const [primarySort, setPrimarySort] = useState("wbs");
   const [secondarySort, setSecondarySort] = useState("activityCode");
   const [selectedActivityCode, setSelectedActivityCode] = useState("");
   const [collapsedGroups, setCollapsedGroups] = useState({});
   const [draggedCardId, setDraggedCardId] = useState(null);
 const [draggedReferenceActivityId, setDraggedReferenceActivityId] = useState(null);
+const [referenceSearch, setReferenceSearch] = useState("");
+const [referenceMode, setReferenceMode] = useState("lookahead");
   const [newZoneName, setNewZoneName] = useState("");
   const [selectedMilestoneId, setSelectedMilestoneId] = useState(
     milestones?.[0]?.id ? String(milestones[0].id) : ""
   );
+  useEffect(() => {
+  const savedPath = sessionStorage.getItem("sentinel_return_path");
+
+  if (!savedPath) return;
+
+  const returnPath = JSON.parse(savedPath);
+
+  if (returnPath.view === "pullplan") {
+    setActiveView("pullplan");
+  }
+
+  if (returnPath.milestoneId) {
+    setSelectedMilestoneId(String(returnPath.milestoneId));
+  }
+}, []);
   const [pullCardForm, setPullCardForm] = useState({
     title: "",
     trade: "",
@@ -377,8 +410,11 @@ const [draggedReferenceActivityId, setDraggedReferenceActivityId] = useState(nul
 
   const pullCards = currentPullPlan.cards || [];
   const readinessCounts = pullCards.reduce((counts, card) => {
-  const key = card.readiness || "needs-defined";
+  const readiness = getReadiness(card);
+  const key = readiness.className || "needs-defined";
+
   counts[key] = (counts[key] || 0) + 1;
+
   return counts;
 }, {});
   const zoneList = workZones && workZones.length > 0 ? workZones : ["Unassigned Zone"];
@@ -464,6 +500,11 @@ const [draggedReferenceActivityId, setDraggedReferenceActivityId] = useState(nul
       readinessOverride: "",
       source: "Manual Sprint Plan",
       createdAt: new Date().toISOString(),
+      completed: false,
+completedAt: null,
+status: "Open",
+missedReason: "",
+missedAt: null,
     };
 
     updatePullPlan([...pullCards, newCard]);
@@ -500,7 +541,7 @@ const [draggedReferenceActivityId, setDraggedReferenceActivityId] = useState(nul
       id: `pull-${Date.now()}`,
       title: activity.name,
       trade: activity.activityCodeGroup || "Unassigned Trade",
-      zone: targetZone || activity.wbs || zoneList[0] || "Unassigned Zone",
+      zone: targetZone || zoneList[0] || "Unassigned Zone",
       weekOffset: String(targetWeekOffset || "-1"),
       duration: getDurationDays(activity.parsedStart, activity.parsedFinish),
       needs: activity.predecessors
@@ -518,6 +559,11 @@ const [draggedReferenceActivityId, setDraggedReferenceActivityId] = useState(nul
       finish: activity.finish || activity.finishDate || "",
       totalFloat: activity.float,
       createdAt: new Date().toISOString(),
+      completed: false,
+completedAt: null,
+status: "Open",
+missedReason: "",
+missedAt: null,
     };
 
     updatePullPlan([...pullCards, newCard]);
@@ -530,8 +576,40 @@ const [draggedReferenceActivityId, setDraggedReferenceActivityId] = useState(nul
       )
     );
   }
+function completePullCard(cardId) {
+  updatePullPlan(
+    pullCards.map((card) =>
+      card.id === cardId
+        ? {
+            ...card,
+            completed: true,
+            completedAt: new Date().toISOString(),
+            status: "Complete",
+            missedReason: "",
+            missedAt: null,
+          }
+        : card
+    )
+  );
+}
+function markPullCardMissed(cardId, missedReason) {
+  updatePullPlan(
+    pullCards.map((card) =>
+      card.id === cardId
+        ? {
+            ...card,
+            status: "Missed",
+            missedReason,
+            missedAt: new Date().toISOString(),
+            completed: false,
+            completedAt: null,
+          }
+        : card
+    )
+  );
+}
 
-  function deletePullCard(cardId) {
+function deletePullCard(cardId) {
     updatePullPlan(pullCards.filter((card) => card.id !== cardId));
   }
 
@@ -633,6 +711,14 @@ const [draggedReferenceActivityId, setDraggedReferenceActivityId] = useState(nul
   }
 
   function openConstraintForCard(card) {
+    sessionStorage.setItem(
+  "sentinel_return_path",
+  JSON.stringify({
+    page: "4-Week Look Ahead and Sprint Plan",
+    view: "pullplan",
+    milestoneId: selectedMilestoneId,
+  })
+);
     if (setConstraintForm) {
       setConstraintForm((prev) => ({
         ...prev,
@@ -901,7 +987,90 @@ function exportLookAheadToExcel() {
     `${project || "Project"} - 4 Week Look Ahead.xlsx`
   );
 }
+function getRelationshipPredId(relationship) {
+  return String(
+    relationship.predTaskId ||
+      relationship.predecessorActivityId ||
+      relationship.predecessorId ||
+      relationship.predActivityId ||
+      ""
+  );
+}
 
+function getRelationshipSuccId(relationship) {
+  return String(
+    relationship.succTaskId ||
+      relationship.successorActivityId ||
+      relationship.successorId ||
+      relationship.succActivityId ||
+      ""
+  );
+}
+
+function getMilestoneDrivenActivities() {
+  if (!selectedMilestone) return lookAheadActivities;
+
+  const milestoneName = String(selectedMilestone.name || "").toLowerCase();
+
+  const milestoneActivity = activities.find((activity) => {
+    const activityId = String(
+      activity.activityId || activity.id || activity.taskCode || ""
+    );
+
+    const activityName = String(
+      activity.activityName || activity.name || activity.description || ""
+    ).toLowerCase();
+
+    return (
+      activityId === String(selectedMilestone.activityId || "") ||
+      activityName.includes(milestoneName) ||
+      milestoneName.includes(activityName)
+    );
+  });
+
+  if (!milestoneActivity) return lookAheadActivities;
+
+  const milestoneActivityId = String(
+    milestoneActivity.activityId ||
+      milestoneActivity.id ||
+      milestoneActivity.taskCode ||
+      ""
+  );
+
+  const drivingIds = new Set([milestoneActivityId]);
+  const queue = [milestoneActivityId];
+
+  while (queue.length > 0) {
+    const currentId = queue.shift();
+
+    scheduleRelationships.forEach((relationship) => {
+      const predId = getRelationshipPredId(relationship);
+      const succId = getRelationshipSuccId(relationship);
+
+      if (succId === currentId && predId && !drivingIds.has(predId)) {
+        drivingIds.add(predId);
+        queue.push(predId);
+      }
+    });
+  }
+
+  return lookAheadActivities.filter((activity) =>
+    drivingIds.has(String(activity.id))
+  );
+}
+
+const referenceBaseActivities =
+  referenceMode === "milestone"
+    ? getMilestoneDrivenActivities()
+    : lookAheadActivities;
+
+const filteredReferenceActivities = referenceBaseActivities.filter(
+  (activity) =>
+    activity.id.toLowerCase().includes(referenceSearch.toLowerCase()) ||
+    activity.name.toLowerCase().includes(referenceSearch.toLowerCase()) ||
+    activity.wbs.toLowerCase().includes(referenceSearch.toLowerCase()) ||
+    activity.activityCodeGroup.toLowerCase().includes(referenceSearch.toLowerCase())
+);
   return (
     <div className="page pull-planning-page">
       <div className="page-header">
@@ -1178,7 +1347,8 @@ function exportLookAheadToExcel() {
           </div>
 
           <div className="pull-plan-layout">
-            <div className="pull-plan-wall-card card">
+  <div className="pull-plan-main-column">
+    <div className="pull-plan-wall-card card">
               <div className="pull-plan-wall-header">
                 <div>
                   <h2>{selectedMilestone ? selectedMilestone.name : "Select a Milestone"}</h2>
@@ -1199,13 +1369,7 @@ function exportLookAheadToExcel() {
                   const zoneCards = pullCards.filter((card) => card.zone === zone || (!card.zone && zone === "Unassigned Zone"));
                   const zoneTrades = Array.from(new Set(zoneCards.map((card) => card.trade || "Unassigned Trade"))).sort();
                   const tradesToShow = zoneTrades.length > 0 ? zoneTrades : ["Unassigned Trade"];
-const readinessCounts = pullCards.reduce((counts, card) => {
-  const key = card.readiness || "needs-defined";
 
-  counts[key] = (counts[key] || 0) + 1;
-
-  return counts;
-}, {});
                   return (
                     <div className="pull-zone-section" key={zone}>
                       <div className="pull-zone-title">{zone}</div>
@@ -1216,11 +1380,13 @@ const readinessCounts = pullCards.reduce((counts, card) => {
 
                           {pullWeekColumns.map((column) => {
                             const cards = pullCards.filter(
-                              (card) =>
-                                (card.zone || "Unassigned Zone") === zone &&
-                                (card.trade || "Unassigned Trade") === trade &&
-                                String(card.weekOffset || "-1") === String(column.value)
-                            );
+  (card) =>
+    !card.completed &&
+    card.status !== "Missed" &&
+    (card.zone || "Unassigned Zone") === zone &&
+    (card.trade || "Unassigned Trade") === trade &&
+    String(card.weekOffset || "-1") === String(column.value)
+);
 
                             return (
                               <div
@@ -1239,7 +1405,10 @@ const readinessCounts = pullCards.reduce((counts, card) => {
                                     <div
                                       key={card.id}
                                       draggable
-                                      onDragStart={() => setDraggedCardId(card.id)}
+                                      onDragStart={() => {
+  setDraggedCardId(card.id);
+  setDraggedReferenceActivityId(null);
+}}
                                       className={`pull-sticky-note ${readiness.className}`}
                                     >
                                       <div className="pull-sticky-note-top">
@@ -1248,9 +1417,18 @@ const readinessCounts = pullCards.reduce((counts, card) => {
                                       </div>
 
                                       <div className="pull-sticky-note-meta">
-                                        <span>{card.duration ? `${card.duration} days` : "Duration TBD"}</span>
-                                        <span>{card.source}</span>
-                                      </div>
+  <span>{card.duration ? `Duration: ${card.duration}d` : "Duration TBD"}</span>
+
+  {card.totalFloat !== undefined &&
+   card.totalFloat !== null &&
+   card.totalFloat !== "" && (
+    <span>Float: {Math.round(Number(card.totalFloat))}d</span>
+  )}
+
+  <span>{card.owner ? `Owner: ${card.owner}` : "Owner TBD"}</span>
+
+  <span>{card.source}</span>
+</div>
 
                                       <label>Needs</label>
                                       <textarea
@@ -1280,10 +1458,49 @@ const readinessCounts = pullCards.reduce((counts, card) => {
                                       </div>
 
                                       <div className="pull-card-actions">
-                                        <button type="button" onClick={() => openConstraintForCard(card)}>Add Constraint</button>
-                                        <button type="button" className="delete-button" onClick={() => deletePullCard(card.id)}>Delete</button>
+                                        <button
+  type="button"
+  onClick={() => openConstraintForCard(card)}
+>
+  Add Constraint
+</button>
+
+<button
+  type="button"
+  className="secondary-button"
+  onClick={() => completePullCard(card.id)}
+>
+  Complete
+</button>
+
+<select
+  className="missed-reason-select"
+  value=""
+  onChange={(e) => {
+    if (!e.target.value) return;
+    markPullCardMissed(card.id, e.target.value);
+  }}
+>
+  <option value="">Missed</option>
+  <option value="Constraint">Constraint</option>
+  <option value="Weather">Weather</option>
+  <option value="Manpower">Manpower</option>
+  <option value="Material">Material</option>
+  <option value="Design">Design</option>
+  <option value="Owner">Owner</option>
+  <option value="Other">Other</option>
+</select>
+
+<button
+  type="button"
+  className="delete-button"
+  onClick={() => deletePullCard(card.id)}
+>
+  Delete
+</button>
                                       </div>
                                     </div>
+                                    
                                   );
                                 })}
                               </div>
@@ -1294,14 +1511,182 @@ const readinessCounts = pullCards.reduce((counts, card) => {
                     </div>
                   );
                 })}
-              </div>
-            </div>
+                            </div>
+                          <div className="card">
+  <h2>Percent Plan Complete</h2>
 
+  {(() => {
+    const plannedCommitments = pullCards.filter((card) => !card.archived);
+    const completedCommitments = plannedCommitments.filter(
+      (card) => card.completed
+    );
+    const missedCommitments = plannedCommitments.filter(
+      (card) => card.status === "Missed"
+    );
+
+    const evaluatedCommitments =
+  completedCommitments.length + missedCommitments.length;
+
+const ppc =
+  evaluatedCommitments > 0
+    ? Math.round(
+        (completedCommitments.length / evaluatedCommitments) * 100
+      )
+    : 0;
+
+    return (
+      <div className="grid">
+        <Metric
+          title="Planned Commitments"
+          value={plannedCommitments.length}
+          note="Total commitments this sprint"
+        />
+        <Metric
+          title="Completed"
+          value={completedCommitments.length}
+          note="Moved to completed commitments"
+        />
+        <Metric
+          title="Missed"
+          value={missedCommitments.length}
+          note="Commitments not completed"
+        />
+        <Metric
+          title="PPC"
+          value={`${ppc}%`}
+          note="Completed ÷ evaluated"
+        />
+      </div>
+    );
+  })()}
+</div>
+<div className="card">
+  <h2>Missed Commitments</h2>
+
+  {pullCards.filter((card) => card.status === "Missed").length === 0 ? (
+    <p>No missed commitments.</p>
+  ) : (
+    <div className="pull-reference-list">
+      {pullCards
+        .filter((card) => card.status === "Missed")
+        .sort((a, b) => new Date(b.missedAt || 0) - new Date(a.missedAt || 0))
+        .map((card) => (
+          <div key={card.id} className="pull-reference-card">
+            <strong>{card.title}</strong>
+
+            <small>
+              Missed {card.missedAt ? formatFullDate(card.missedAt) : ""}
+            </small>
+
+            <small>Reason: {card.missedReason || "Other"}</small>
+            <small>{card.owner || "No Owner"}</small>
+
+<button
+  type="button"
+  className="secondary-button"
+  onClick={() => {
+    updatePullPlan(
+      pullCards.map((item) =>
+        item.id === card.id
+          ? {
+              ...item,
+              status: "Open",
+              missedReason: "",
+              missedAt: null,
+              completed: false,
+              completedAt: null,
+              weekOffset: item.weekOffset || "-1",
+              zone: item.zone || zoneList[0] || "Unassigned Zone",
+              trade: item.trade || "Unassigned Trade",
+            }
+          : item
+      )
+    );
+  }}
+>
+  Reopen
+</button>
+          </div>
+                  ))}
+                  <div className="missed-reason-summary">
+  <h3>Missed Reasons</h3>
+
+  <div className="missed-reason-grid">
+    {["Constraint", "Weather", "Manpower", "Material", "Design", "Owner", "Other"].map(
+      (reason) => (
+        <div key={reason} className="mini-metric">
+          <strong>
+            {
+              pullCards.filter(
+  (card) => card.status === "Missed" && card.missedReason === reason
+).length
+            }
+          </strong>
+          <span>{reason}</span>
+        </div>
+      )
+    )}
+  </div>
+</div>
+    </div>
+  )}
+</div>
+
+<div className="card">
+  <h2>Completed Commitments</h2>
+
+              {pullCards.filter((card) => card.completed).length === 0 ? (
+                <p>No completed commitments.</p>
+              ) : (
+                <div className="pull-reference-list">
+                  {pullCards
+                    .filter((card) => card.completed)
+                    .sort(
+                      (a, b) =>
+                        new Date(b.completedAt || 0) -
+                        new Date(a.completedAt || 0)
+                    )
+                    .map((card) => (
+                      <div key={card.id} className="pull-reference-card">
+                        <strong>{card.title}</strong>
+
+                        <small>
+                          Completed{" "}
+                          {card.completedAt
+                            ? formatFullDate(card.completedAt)
+                            : ""}
+                        </small>
+
+                        <small>{card.owner || "No Owner"}</small>
+                      </div>
+                    ))}
+                </div>
+              )}
+            </div>
+</div>
+</div>
             <div className="pull-plan-reference card">
-              <h2>CPM Reference Activities</h2>
+<h2>CPM Reference Activities</h2>
+
+<select
+  className="reference-filter-select"
+  value={referenceMode}
+  onChange={(e) => setReferenceMode(e.target.value)}
+>
+  <option value="lookahead">Next 20 Work Days</option>
+  <option value="milestone">Selected Milestone Path</option>
+</select>
+
+<input
+  className="reference-search-input"
+  type="text"
+  placeholder="Search activities..."
+  value={referenceSearch}
+  onChange={(e) => setReferenceSearch(e.target.value)}
+/>
               <p>Use the schedule as a reference source. Add only the activities the team wants represented in the sprint plan.</p>
               <div className="pull-reference-list">
-                {lookAheadActivities.slice(0, 60).map((activity) => (
+                {filteredReferenceActivities.slice(0, 200).map((activity) => (
                                     <div
                     className="pull-reference-card"
                     key={activity.id}
@@ -1323,7 +1708,9 @@ const readinessCounts = pullCards.reduce((counts, card) => {
         </>
       )}
     </div>
-  );
+   );
 }
 
 export default FourWeekLookAhead;
+
+

@@ -8,7 +8,11 @@ function ConstraintBoard({
   addConstraint,
   updateConstraintStatus,
   moveConstraintToIssue,
+  archiveConstraint,
+  deleteConstraint,
+  setActivePage,
 }) {
+  
   const projectTeamMembers = teamMembers || [];
   const projectName =
   typeof project === "object" ? project.name : "";
@@ -17,13 +21,36 @@ function ConstraintBoard({
     const { name, value } = e.target;
     setConstraintForm({ ...constraintForm, [name]: value });
   }
+  function returnToSource() {
+  const savedPath = sessionStorage.getItem("sentinel_return_path");
+
+  if (!savedPath) return;
+
+  const returnPath = JSON.parse(savedPath);
+
+  if (returnPath.page && setActivePage) {
+    setActivePage(returnPath.page);
+  }
+}
 
   return (
     <div className="page">
       <div className="page-header">
-        <h1>Constraint Board</h1>
-        <p>{projectName}</p>
-      </div>
+  <div>
+    <h1>Constraint Board</h1>
+    <p>{projectName}</p>
+  </div>
+
+  {sessionStorage.getItem("sentinel_return_path") && (
+    <button
+      type="button"
+      className="secondary-button"
+      onClick={returnToSource}
+    >
+      Return to Sprint Plan
+    </button>
+  )}
+</div>
 
       <form className="entry-form" onSubmit={addConstraint}>
         <div className="constraint-form-grid">
@@ -119,7 +146,7 @@ function ConstraintBoard({
           </thead>
 
           <tbody>
-            {constraints.map((constraint) => (
+            {constraints.filter((constraint) => !constraint.archived).map((constraint) => (
               <tr key={constraint.id}>
                 <td>{constraint.description}</td>
                 <td>{constraint.owner}</td>
@@ -139,14 +166,34 @@ function ConstraintBoard({
                 </td>
 
                 <td>
-                  <button
-                    type="button"
-                    className="secondary-button small-button"
-                    onClick={() => moveConstraintToIssue(constraint)}
-                  >
-                    Move to Issues
-                  </button>
-                </td>
+  <button
+    type="button"
+    className="secondary-button small-button"
+    onClick={() => moveConstraintToIssue(constraint)}
+  >
+    Move to Issues
+  </button>
+
+  {constraint.status === "Closed" && (
+    <>
+      <button
+        type="button"
+        className="secondary-button small-button"
+        onClick={() => archiveConstraint(constraint.id)}
+      >
+        Archive
+      </button>
+
+      <button
+        type="button"
+        className="delete-button small-button"
+        onClick={() => deleteConstraint(constraint.id)}
+      >
+        Delete
+      </button>
+    </>
+  )}
+</td>
               </tr>
             ))}
           </tbody>
