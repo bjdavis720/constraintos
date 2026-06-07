@@ -28,6 +28,9 @@ function TIAIntelligence({
   const getFinish = (activity) =>
     activity.finish || activity.finishDate || activity.Finish || "";
 
+  const getStart = (activity) =>
+    activity.start || activity.startDate || activity.Start || "";
+
   const getFloat = (activity) =>
     Number(
       activity.totalFloat ??
@@ -36,6 +39,68 @@ function TIAIntelligence({
         activity.remainingFloat ??
         0
     );
+
+  function daysBetween(startDate, finishDate) {
+    if (!startDate || !finishDate) return 0;
+
+    const start = new Date(startDate);
+    const finish = new Date(finishDate);
+
+    if (Number.isNaN(start.getTime()) || Number.isNaN(finish.getTime())) {
+      return 0;
+    }
+
+    return Math.round((finish - start) / (1000 * 60 * 60 * 24));
+  }
+
+  function isCompletionActivity(activity) {
+    const id = activity.id?.toUpperCase() || "";
+    const name = activity.name?.toUpperCase() || "";
+
+    return (
+      id.includes("PMILE") ||
+      id.includes("PCLO") ||
+      name.includes("PROJECT SUBSTANTIAL COMPLETION") ||
+      name.includes("SUBSTANTIAL COMPLETION") ||
+      name.includes("CONTRACT COMPLETION") ||
+      name.includes("FINAL PROJECT COMPLETION")
+    );
+  }
+
+  function isRootCauseCandidate(activity) {
+    const id = activity.id?.toUpperCase() || "";
+    const name = activity.name?.toUpperCase() || "";
+
+    const rootCauseKeywords = [
+      "PERM",
+      "PROC",
+      "SUBM",
+      "RFI",
+      "DES",
+      "LAND",
+      "ENV",
+      "HAZ",
+      "GSA",
+      "ACQUISITION",
+      "REVIEW",
+      "APPROVAL",
+      "REMEDIATION",
+      "DEMOLITION",
+      "DEMO",
+      "NTP",
+      "PERMIT",
+      "EASEMENT",
+      "UTILITY",
+      "TRANSFORMER",
+      "SWITCHGEAR",
+      "PRECAST",
+      "LONG LEAD",
+    ];
+
+    return rootCauseKeywords.some(
+      (keyword) => id.includes(keyword) || name.includes(keyword)
+    );
+  }
 
   if (!priorSnapshot || !currentSnapshot) {
     return (
@@ -71,31 +136,33 @@ function TIAIntelligence({
 
       if (!prior) return null;
 
+      const priorStart = getStart(prior);
+      const currentStart = getStart(current);
       const priorFinish = getFinish(prior);
       const currentFinish = getFinish(current);
 
       if (!priorFinish || !currentFinish) return null;
 
-      const varianceDays = Math.round(
-        (new Date(currentFinish) - new Date(priorFinish)) /
-          (1000 * 60 * 60 * 24)
-      );
+      const startVarianceDays = daysBetween(priorStart, currentStart);
+      const varianceDays = daysBetween(priorFinish, currentFinish);
 
       const priorFloat = getFloat(prior);
       const currentFloat = getFloat(current);
       const floatVariance = Math.round((currentFloat - priorFloat) * 10) / 10;
+      const floatLoss =
+        Math.round(Math.max(0, priorFloat - currentFloat) * 10) / 10;
 
-const floatLoss =
-  Math.round(Math.max(0, priorFloat - currentFloat) * 10) / 10;
-
-const netImpact =
-  Math.round(Math.max(0, varianceDays - priorFloat) * 10) / 10;
+      const netImpact =
+        Math.round(Math.max(0, varianceDays - priorFloat) * 10) / 10;
 
       return {
         id,
         name: getName(current),
+        priorStart,
+        currentStart,
         priorFinish,
         currentFinish,
+        startVarianceDays,
         varianceDays,
         priorFloat,
         currentFloat,
@@ -103,6 +170,7 @@ const netImpact =
         floatLoss,
         netImpact,
         becameCritical: priorFloat > 0 && currentFloat <= 0,
+        isCompletion: false,
       };
     })
     .filter(Boolean);
@@ -119,7 +187,30 @@ const netImpact =
     ? Math.max(...slippedActivities.map((item) => item.netImpact))
     : 0;
 
-  const likelyTiaDrivers = slippedActivities
+  const completionImpacts = comparison
+    .filter(isCompletionActivity)
+    .filter((item) => item.varianceDays > 0)
+    .sort(
+      (a, b) =>
+        b.varianceDays - a.varianceDays ||
+        b.netImpact - a.netImpact ||
+        a.currentFloat - b.currentFloat
+    );
+
+  const primaryCompletionImpact =
+    completionImpacts.find((item) =>
+      item.name?.toUpperCase().includes("PROJECT SUBSTANTIAL COMPLETION")
+    ) ||
+    completionImpacts.find((item) =>
+      item.name?.toUpperCase().includes("CONTRACT COMPLETION")
+    ) ||
+    completionImpacts.find((item) =>
+      item.name?.toUpperCase().includes("FINAL PROJECT COMPLETION")
+    ) ||
+    completionImpacts[0] ||
+    null;
+
+  const symptomActivities = slippedActivities
     .filter(
       (item) =>
         item.varianceDays > 0 &&
@@ -133,14 +224,80 @@ const netImpact =
     )
     .slice(0, 10);
 
+    const rootCausePriority = (activity) => {
+    const id = activity.id?.toUpperCase() || "";
+    const name = activity.name?.toUpperCase() || "";
+
+    let score = 0;
+
+    if (name.includes("LAND ACQUISITION") || name.includes("ACQUISITION")) {
+      score += 10000;
+    }
+
+    if (id.includes("PERM")) score += 8000;
+    if (name.includes("GSA")) score += 7000;
+    if (name.includes("HAZMAT")) score += 6000;
+    if (name.includes("REMEDIATION")) score += 5000;
+    if (name.includes("DEMO") || name.includes("DEMOLITION")) score += 3000;
+    if (id.includes("PROC")) score += 2000;
+    if (name.includes("APPROVAL") || name.includes("REVIEW")) score += 1500;
+
+    score += Math.max(0, activity.varianceDays || 0);
+    score += Math.max(0, activity.floatLoss || 0);
+
+    return score;
+  };
+
+  const isDownstreamSymptom = (activity) => {
+    const id = activity.id?.toUpperCase() || "";
+    const name = activity.name?.toUpperCase() || "";
+
+    return (
+      id.includes("PCLO") ||
+      id.includes("PMILE1200") ||
+      id.includes("PMILE1210") ||
+      name.includes("FINAL SITE CLEANUP") ||
+      name.includes("DEMOBILIZATION") ||
+      name.includes("SUBSTANTIAL COMPLETION") ||
+      name.includes("CONTRACT COMPLETION") ||
+      name.includes("FINAL PROJECT COMPLETION") ||
+      name.includes("PHASED OPENING")
+    );
+  };
+
+  const rootCauseDrivers = slippedActivities
+    .filter((item) => {
+      if (isDownstreamSymptom(item)) return false;
+      if (!isRootCauseCandidate(item)) return false;
+
+      return (
+        item.varianceDays > 14 ||
+        item.startVarianceDays > 14 ||
+        item.floatLoss > 10 ||
+        item.becameCritical
+      );
+    })
+    .sort((a, b) => rootCausePriority(b) - rootCausePriority(a))
+    .slice(0, 10);
+
+  const primaryRootCause =
+    rootCauseDrivers.find((item) => {
+      const name = item.name?.toUpperCase() || "";
+      return name.includes("LAND ACQUISITION") || name.includes("ACQUISITION");
+    }) ||
+    rootCauseDrivers[0] ||
+    null;
   function createIssuesFromTiaDrivers() {
     if (!updateCurrentProjectData) {
       alert("Unable to create issues from this page.");
       return;
     }
 
-    if (likelyTiaDrivers.length === 0) {
-      alert("No likely TIA drivers are available to create issues.");
+    const issueSourceActivities =
+      rootCauseDrivers.length > 0 ? rootCauseDrivers : symptomActivities;
+
+    if (issueSourceActivities.length === 0) {
+      alert("No TIA drivers are available to create issues.");
       return;
     }
 
@@ -151,7 +308,7 @@ const netImpact =
       )
     );
 
-    const newIssues = likelyTiaDrivers
+    const newIssues = issueSourceActivities
       .filter(
         (activity) =>
           !existingIssueKeys.has(
@@ -164,14 +321,14 @@ const netImpact =
         source: "TIA Intelligence",
         scheduleDeltaType: "Potential TIA Driver",
         activityId: activity.id,
-        start: "",
+        start: activity.currentStart || "",
         finish: activity.currentFinish || "",
         totalFloat: activity.currentFloat ?? "",
         milestone: "Unassigned",
         status: "Open",
         manuallyEscalated: false,
         createdAt: new Date().toISOString(),
-        notes: `TIA Intelligence identified this activity as a potential time impact driver. Previous finish: ${activity.priorFinish}. Current finish: ${activity.currentFinish}. Finish variance: ${activity.varianceDays} calendar days. Prior float: ${activity.priorFloat}. Current float: ${activity.currentFloat}. Float variance: ${activity.floatVariance} days. Estimated net impact: ${activity.netImpact} calendar days.`,
+        notes: `TIA Intelligence identified this activity as a potential time impact driver. Previous start: ${activity.priorStart}. Current start: ${activity.currentStart}. Previous finish: ${activity.priorFinish}. Current finish: ${activity.currentFinish}. Start variance: ${activity.startVarianceDays} calendar days. Finish variance: ${activity.varianceDays} calendar days. Prior float: ${activity.priorFloat}. Current float: ${activity.currentFloat}. Float variance: ${activity.floatVariance} days. Estimated net impact: ${activity.netImpact} calendar days.`,
       }));
 
     if (newIssues.length === 0) {
@@ -203,6 +360,15 @@ const netImpact =
 
       <div className="metrics-grid">
         <div className="metric-card">
+          <h3>Completion Impact</h3>
+          <div className="metric-value">
+            {primaryCompletionImpact
+              ? `${primaryCompletionImpact.varianceDays} days`
+              : "0 days"}
+          </div>
+        </div>
+
+        <div className="metric-card">
           <h3>Slipped Activities</h3>
           <div className="metric-value">{slippedActivities.length}</div>
         </div>
@@ -229,13 +395,15 @@ const netImpact =
       </div>
 
       <div className="data-card">
-        <h2>Likely TIA Drivers</h2>
+        <h2>Layer 1 – Schedule Delta / Symptom Activities</h2>
 
         <button
           type="button"
           className="secondary-button small-button"
           onClick={createIssuesFromTiaDrivers}
-          disabled={likelyTiaDrivers.length === 0}
+          disabled={
+            rootCauseDrivers.length === 0 && symptomActivities.length === 0
+          }
         >
           Create Issues from TIA Drivers
         </button>
@@ -256,12 +424,12 @@ const netImpact =
           </thead>
 
           <tbody>
-            {likelyTiaDrivers.length === 0 ? (
+            {symptomActivities.length === 0 ? (
               <tr>
-                <td colSpan="9">No likely TIA drivers found.</td>
+                <td colSpan="9">No symptom activities found.</td>
               </tr>
             ) : (
-              likelyTiaDrivers.map((activity) => (
+              symptomActivities.map((activity) => (
                 <tr key={activity.id}>
                   <td>{activity.id}</td>
                   <td>{activity.name}</td>
@@ -280,7 +448,70 @@ const netImpact =
       </div>
 
       <div className="data-card">
-        <h2>Preliminary Draft TIA Narrative</h2>
+        <h2>Layer 2 – Root Cause Delay Drivers</h2>
+
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>Activity ID</th>
+              <th>Name</th>
+              <th>Prior Start</th>
+              <th>Current Start</th>
+              <th>Start Variance</th>
+              <th>Prior Finish</th>
+              <th>Current Finish</th>
+              <th>Finish Variance</th>
+              <th>Float Loss</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {rootCauseDrivers.length === 0 ? (
+              <tr>
+                <td colSpan="9">
+                  No root cause delay drivers identified. This version uses
+                  rule-based screening until predecessor/successor tracing is
+                  added from the XER relationship data.
+                </td>
+              </tr>
+            ) : (
+              rootCauseDrivers.map((activity) => (
+                <tr key={activity.id}>
+                  <td>{activity.id}</td>
+                  <td>{activity.name}</td>
+                  <td>{activity.priorStart || "N/A"}</td>
+                  <td>{activity.currentStart || "N/A"}</td>
+                  <td>{activity.startVarianceDays} days</td>
+                  <td>{activity.priorFinish || "N/A"}</td>
+                  <td>{activity.currentFinish || "N/A"}</td>
+                  <td>{activity.varianceDays} days</td>
+                  <td>{activity.floatLoss} days</td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="data-card">
+        <h2>Layer 3 – Draft TIA Narrative</h2>
+
+        {primaryCompletionImpact && (
+          <div className="info-box">
+            <strong>Primary Completion Impact:</strong>{" "}
+            {primaryCompletionImpact.id} – {primaryCompletionImpact.name} moved
+            from {primaryCompletionImpact.priorFinish} to{" "}
+            {primaryCompletionImpact.currentFinish}, indicating a completion
+            movement of {primaryCompletionImpact.varianceDays} calendar days.
+          </div>
+        )}
+
+        {primaryRootCause && (
+          <div className="info-box">
+            <strong>Potential Root Cause Delay Event:</strong>{" "}
+            {primaryRootCause.id} – {primaryRootCause.name}
+          </div>
+        )}
 
         <p>
           Compared to the prior schedule update, ConstraintOS identified{" "}
@@ -291,31 +522,82 @@ const netImpact =
           to have moved onto or near the critical path.
         </p>
 
-        <p>
-          The largest activity-level finish movement identified was{" "}
-          <strong>{largestSlip} calendar days</strong>.  The largest estimated
-          net time impact after consideration of prior available float was{" "}
-          <strong>{largestNetImpact} calendar days</strong>.  Activities with
-          forecast finish slippage, float erosion, low remaining float, or new
-          critical / near-critical status should be reviewed as potential time
-          impact drivers.
-        </p>
+        {primaryCompletionImpact ? (
+          <p>
+            The primary completion activity identified in this comparison is{" "}
+            <strong>{primaryCompletionImpact.id}</strong> –{" "}
+            <strong>{primaryCompletionImpact.name}</strong>. This activity moved
+            from <strong>{primaryCompletionImpact.priorFinish}</strong> to{" "}
+            <strong>{primaryCompletionImpact.currentFinish}</strong>, reflecting
+            a projected completion impact of{" "}
+            <strong>{primaryCompletionImpact.varianceDays}</strong> calendar
+            days.
+          </p>
+        ) : (
+          <p>
+            No clear project completion milestone movement was identified from
+            the available schedule comparison data.
+          </p>
+        )}
 
-        {likelyTiaDrivers.length > 0 ? (
+        {primaryRootCause ? (
+          <p>
+            The likely root cause delay chain appears to originate with{" "}
+            <strong>{primaryRootCause.id}</strong> –{" "}
+            <strong>{primaryRootCause.name}</strong>. This activity moved from a
+            prior finish of <strong>{primaryRootCause.priorFinish}</strong> to a
+            current finish of <strong>{primaryRootCause.currentFinish}</strong>.
+            The delay appears to affect downstream work and should be reviewed
+            against project records, owner decisions, design releases,
+            procurement impacts, site access constraints, and other
+            contemporaneous documentation.
+          </p>
+        ) : (
+          <p>
+            ConstraintOS did not identify a clear root cause delay driver using
+            the current rule-based screening. The schedule should be reviewed
+            for changed logic, added fragnet activities, owner-caused
+            constraints, procurement impacts, and delayed predecessor activities.
+          </p>
+        )}
+
+        {rootCauseDrivers.length > 0 && (
           <>
             <p>
-              Based on the current comparison, the following activities appear
-              to be the most likely schedule impact drivers:
+              The following activities appear to be potential root cause or
+              upstream delay drivers:
             </p>
 
             <ul>
-              {likelyTiaDrivers.slice(0, 5).map((activity) => (
+              {rootCauseDrivers.slice(0, 5).map((activity) => (
+                <li key={activity.id}>
+                  <strong>{activity.id}</strong> — {activity.name} moved from{" "}
+                  <strong>{activity.priorFinish || "N/A"}</strong> to{" "}
+                  <strong>{activity.currentFinish || "N/A"}</strong>, with a
+                  finish variance of{" "}
+                  <strong>{activity.varianceDays}</strong> calendar days and a
+                  float loss of <strong>{activity.floatLoss}</strong> days.
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+
+        {symptomActivities.length > 0 && (
+          <>
+            <p>
+              The following downstream activities appear to be major schedule
+              symptoms or completion-path effects:
+            </p>
+
+            <ul>
+              {symptomActivities.slice(0, 5).map((activity) => (
                 <li key={activity.id}>
                   <strong>{activity.id}</strong> — {activity.name} moved from{" "}
                   <strong>{activity.priorFinish || "N/A"}</strong> to{" "}
                   <strong>{activity.currentFinish || "N/A"}</strong>,
                   reflecting a finish variance of{" "}
-                  <strong>{activity.varianceDays}</strong> calendar days.  The
+                  <strong>{activity.varianceDays}</strong> calendar days. The
                   activity moved from <strong>{activity.priorFloat}</strong>{" "}
                   days of float to <strong>{activity.currentFloat}</strong> days
                   of float, with an estimated net impact of{" "}
@@ -324,26 +606,20 @@ const netImpact =
                 </li>
               ))}
             </ul>
-
-            <p>
-              These activities should be reviewed against project records, delay
-              event documentation, owner decisions, design releases, procurement
-              impacts, site access constraints, and any other contemporaneous
-              records before determining whether a formal Time Impact Analysis
-              is warranted.
-            </p>
           </>
-        ) : (
-          <p>
-            No likely TIA drivers were identified from the current schedule
-            comparison.  This may mean there were no measurable forecast finish
-            changes, or that the prior and current schedule snapshots are not
-            yet being compared correctly.
-          </p>
         )}
 
+        <p>
+          This analysis is preliminary. The Layer 1 table identifies schedule
+          movement and likely downstream symptoms. The Layer 2 table identifies
+          possible upstream root cause drivers. The next review should validate
+          the actual predecessor/successor logic, changed constraints, added TIA
+          fragnet activities, and contemporaneous project records before using
+          this narrative in formal correspondence.
+        </p>
+
         <p className="small-muted-text">
-          This narrative is rule-based and preliminary.  It is not yet
+          This narrative is rule-based and preliminary. It is not yet
           AI-generated and should be reviewed before use in formal
           correspondence.
         </p>

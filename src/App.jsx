@@ -10,12 +10,13 @@ import TodosPage from "./pages/TodosPage.jsx";
 import IssuesBoard from "./pages/IssuesBoard.jsx";
 import ExecutiveAttentionCenter from "./pages/ExecutiveAttentionCenter.jsx";
 import OperationalFeed from "./components/OperationalFeed.jsx";
-import TIAIntelligence from "./components/TIAIntelligence";
+import TIAIntelligence from "./components/TIAIntelligence.jsx";
 import ScheduleIntelligence from "./pages/ScheduleIntelligence.jsx";
 import RevenueForecast from "./components/RevenueForecast.jsx";
-import FourWeekLookAhead from "./components/FourWeekLookAhead";
+import FourWeekLookAhead from "./components/FourWeekLookAhead.jsx";
 import SubmittalReadiness from "./components/SubmittalReadiness.jsx";
 import ProjectHealthOS from "./components/ProjectHealthOS.jsx";
+import ModuleHeader from "./components/ModuleHeader.jsx";
 
 import {
   getAgeInDays,
@@ -34,9 +35,11 @@ function createEmptyProjectData() {
     teamMembers: [],
     submittals: [],
     revenueHistory: [],
-    scheduleSnapshots: [],
+        scheduleSnapshots: [],
     scheduleActivities: [],
     scheduleRelationships: [],
+    pullPlans: {},
+    workZones: [],
 
     projectHealthOS: {
       reviewItems: [],
@@ -50,10 +53,7 @@ function createEmptyProjectData() {
 function App() {
   const savedAppData = localStorage.getItem(STORAGE_KEY);
   const parsedAppData = savedAppData ? JSON.parse(savedAppData) : null;
-
-  const [activePage, setActivePage] = useState(
-    parsedAppData?.activePage || "SentinelOS Home"
-  );
+  const [activePage, setActivePage] = useState("SentinelOS Home");
 
   const [projects, setProjects] = useState(parsedAppData?.projects || []);
   const [selectedProject, setSelectedProject] = useState(
@@ -125,6 +125,8 @@ const teamMembers = currentData.teamMembers || [];
 const submittals = currentData.submittals || [];
 const revenueHistory = currentData.revenueHistory || [];
 const scheduleSnapshots = currentData.scheduleSnapshots || [];
+const pullPlans = currentData.pullPlans || {};
+const workZones = currentData.workZones || [];
 const projectHealthOS = currentData.projectHealthOS || {
   reviewItems: [],
   issues: [],
@@ -316,7 +318,7 @@ const latestScheduleRelationships =
     });
 
     setSelectedProject(newProject.id);
-    setActivePage("Project Dashboard");
+setActivePage("SentinelOS Home");
 
     setProjectForm({
       name: "",
@@ -327,7 +329,7 @@ const latestScheduleRelationships =
       status: "Active",
     });
   }
-
+  
   function archiveProject(projectId) {
     setProjects((prev) =>
       prev.map((project) =>
@@ -862,14 +864,96 @@ setTodoForm({
     setActivePage={setActivePage}
   />
 )}
-{activePage === "ProjectHealthOS" &&
+{activePage === "Project Health Dashboard" &&
   (selectedProject ? (
-    <ProjectHealthOS
-  project={projectName}
-  projectHealthOS={projectHealthOS}
-  updateProjectHealthOS={updateProjectHealthOS}
-  teamMembers={teamMembers}
-/>
+    <>
+      <div className="grid">
+        <div
+          className="metric-link"
+          onClick={() =>
+            goToPageWithFilter("Schedule Milestones", "active-milestones")
+          }
+        >
+          <Metric
+            title="Active Milestones"
+            value={activeMilestones.length}
+            note={`${archivedMilestones.length} archived`}
+          />
+        </div>
+
+        <div
+          className="metric-link"
+          onClick={() =>
+            goToPageWithFilter("Schedule Milestones", "milestone-risk")
+          }
+        >
+          <Metric
+            title="Milestone Risk"
+            value={offTrackMilestones.length}
+            note={`${atRiskMilestones.length} at risk`}
+          />
+        </div>
+
+        <div
+          className="metric-link"
+          onClick={() =>
+            goToPageWithFilter("Constraint Board", "open-constraints")
+          }
+        >
+          <Metric
+            title="Open Constraints"
+            value={openConstraints.length}
+            note={`${escalatedConstraints.length} escalated`}
+          />
+        </div>
+
+        <div
+          className="metric-link"
+          onClick={() => goToPageWithFilter("Issues Board", "open-issues")}
+        >
+          <Metric
+            title="Open Issues"
+            value={openIssues.length}
+            note={`${actionAssignedIssues.length} action assigned`}
+          />
+        </div>
+
+        <div
+          className="metric-link"
+          onClick={() => goToPageWithFilter("Issues Board", "aging-issues")}
+        >
+          <Metric
+            title="Aging Issues"
+            value={agingIssues.length}
+            note="Open 7+ days"
+          />
+        </div>
+
+        <div
+          className="metric-link"
+          onClick={() =>
+            goToPageWithFilter("Executive Attention", "exec-attention")
+          }
+        >
+          <Metric
+            title="Exec Attention"
+            value={executiveAttentionTotal}
+            note="Needs leadership review"
+          />
+        </div>
+
+        <div
+          className="metric-link"
+          onClick={() => goToPageWithFilter("To-Dos", "open-todos")}
+        >
+          <Metric
+            title="Open To-Dos"
+            value={openTodos.length}
+            note={`${overdueTodos.length} overdue`}
+          />
+        </div>
+      </div>
+    </>
   ) : (
     renderNoProjectSelected()
   ))}
@@ -1150,7 +1234,7 @@ deleteTeamMember={deleteTeamMember}
                           className="clickable-row"
                           onClick={() => {
                             setSelectedProject(project.id);
-                            setActivePage("Project Dashboard");
+                            setActivePage("SentinelOS Home");
                           }}
                         >
                           <td>{project.name}</td>
@@ -1179,115 +1263,7 @@ deleteTeamMember={deleteTeamMember}
           </div>
         )}
 
-        {activePage === "Project Dashboard" &&
-          (selectedProject ? (
-            <>
-              <div className="grid">
-                <div
-                  className="metric-link"
-                  onClick={() =>
-                    goToPageWithFilter(
-                      "Schedule Milestones",
-                      "active-milestones"
-                    )
-                  }
-                >
-                  <Metric
-                    title="Active Milestones"
-                    value={activeMilestones.length}
-                    note={`${archivedMilestones.length} archived`}
-                  />
-                </div>
-
-                <div
-                  className="metric-link"
-                  onClick={() =>
-                    goToPageWithFilter("Schedule Milestones", "milestone-risk")
-                  }
-                >
-                  <Metric
-                    title="Milestone Risk"
-                    value={offTrackMilestones.length}
-                    note={`${atRiskMilestones.length} at risk`}
-                  />
-                </div>
-
-                <div
-                  className="metric-link"
-                  onClick={() =>
-                    goToPageWithFilter("Constraint Board", "open-constraints")
-                  }
-                >
-                  <Metric
-                    title="Open Constraints"
-                    value={openConstraints.length}
-                    note={`${escalatedConstraints.length} escalated`}
-                  />
-                </div>
-
-                <div
-                  className="metric-link"
-                  onClick={() =>
-                    goToPageWithFilter("Issues Board", "open-issues")
-                  }
-                >
-                  <Metric
-                    title="Open Issues"
-                    value={openIssues.length}
-                    note={`${actionAssignedIssues.length} action assigned`}
-                  />
-                </div>
-
-                <div
-                  className="metric-link"
-                  onClick={() =>
-                    goToPageWithFilter("Issues Board", "aging-issues")
-                  }
-                >
-                  <Metric
-                    title="Aging Issues"
-                    value={agingIssues.length}
-                    note="Open 7+ days"
-                  />
-                </div>
-
-                <div
-                  className="metric-link"
-                  onClick={() =>
-                    goToPageWithFilter("Executive Attention", "exec-attention")
-                  }
-                >
-                  <Metric
-                    title="Exec Attention"
-                    value={executiveAttentionTotal}
-                    note="Needs leadership review"
-                  />
-                </div>
-
-                <div
-                  className="metric-link"
-                  onClick={() => goToPageWithFilter("To-Dos", "open-todos")}
-                >
-                  <Metric
-                    title="Open To-Dos"
-                    value={openTodos.length}
-                    note={`${overdueTodos.length} overdue`}
-                  />
-                </div>
-              </div>
-
-              <div
-                className={`project-health-banner ${projectHealth.toLowerCase()}`}
-              >
-                <strong>Project Health: {projectHealth}</strong>
-                <span>{projectHealthNote}</span>
-              </div>
-            </>
-          ) : (
-            renderNoProjectSelected()
-          ))}
-
-        {activePage === "Schedule Intelligence" &&
+          {activePage === "Schedule Intelligence" &&
   (selectedProject ? (
   <ScheduleIntelligence
   project={projectName}
@@ -1321,17 +1297,23 @@ deleteTeamMember={deleteTeamMember}
   ) : (
     renderNoProjectSelected()
   ))}
-  {activePage === "4-Week Look Ahead and Pull Plan" &&
+    {activePage === "4-Week Look Ahead and Sprint Plan" &&
   (selectedProject ? (
     <FourWeekLookAhead
-  project={projectName}
-  activities={latestScheduleActivities}
-  scheduleActivities={latestScheduleActivities}
-  scheduleRelationships={latestScheduleRelationships}
-  constraints={constraints}
-  setConstraintForm={setConstraintForm}
-  setActivePage={setActivePage}
-/>
+      project={projectName}
+      activities={latestScheduleActivities}
+      scheduleActivities={latestScheduleActivities}
+      scheduleRelationships={latestScheduleRelationships}
+      milestones={milestones}
+      constraints={constraints}
+      issues={issues}
+      submittals={submittals}
+      pullPlans={pullPlans}
+      workZones={workZones}
+      updateCurrentProjectData={updateCurrentProjectData}
+      setConstraintForm={setConstraintForm}
+      setActivePage={setActivePage}
+    />
   ) : (
     renderNoProjectSelected()
   ))}
@@ -1370,17 +1352,16 @@ deleteTeamMember={deleteTeamMember}
         {activePage === "Constraint Board" &&
           (selectedProject ? (
             <ConstraintBoard
-              project={projectName}
-              milestones={milestones}
-              constraints={constraints}
-              constraintForm={constraintForm}
-              setConstraintForm={setConstraintForm}
-              addConstraint={addConstraint}
-              updateConstraintStatus={updateConstraintStatus}
-              moveConstraintToIssue={moveConstraintToIssue}
-              permissions={permissions}
-              dashboardFilter={dashboardFilter}
-            />
+  project={selectedProject}
+  teamMembers={teamMembers}
+  milestones={milestones}
+  constraints={constraints}
+  constraintForm={constraintForm}
+  setConstraintForm={setConstraintForm}
+  addConstraint={addConstraint}
+  updateConstraintStatus={updateConstraintStatus}
+  moveConstraintToIssue={moveConstraintToIssue}
+/>
           ) : (
             renderNoProjectSelected()
           ))}
@@ -1428,12 +1409,12 @@ deleteTeamMember={deleteTeamMember}
 
         {![
   "Project Setup",
-  "Project Dashboard",
+  "Project Health Dashboard",
   "Executive Dashboard",
   "Schedule Intelligence",
   "TIA Intelligence",
   "Revenue Forecast",
-  "4-Week Look Ahead and Pull Plan",
+  "4-Week Look Ahead and Sprint Plan",
   "Submittal Readiness",
   "Schedule Milestones",
   "Constraint Board",
@@ -1441,7 +1422,10 @@ deleteTeamMember={deleteTeamMember}
   "To-Dos",
   "Executive Attention",
   "SentinelOS Home",
-  "ProjectHealthOS",
+  "Project Health Reviews",
+"Design Integration Dashboard",
+"Long Lead Dashboard",
+"Procurement Dashboard",
 ].includes(activePage) && (
           <div className="card">
             <h3>{activePage}</h3>

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import * as XLSX from "xlsx";
+
 function ProjectHealthOS({
   project,
   projectHealthOS,
@@ -12,7 +13,7 @@ function ProjectHealthOS({
     todos: [],
     reviewHistory: [],
   };
-
+  
   const reviewItems = healthData.reviewItems || [];
   const issues = healthData.issues || [];
   const todos = healthData.todos || [];
@@ -340,21 +341,12 @@ function archiveHealthIssue(id) {
 }
   return (
     <div className="page project-health-os-page">
-      <div className="module-hero module-hero-health">
-  <img
-    src={`${import.meta.env.BASE_URL}projecthealth-logo.png`}
-    alt="ProjectHealthOS"
-    className="module-hero-logo"
-  />
-
-  <div>
-    <h1>
-      ProjectHealth<span className="os-highlight">OS</span>
-    </h1>
-
-    <p>Project Health & Accountability</p>
-  </div>
-</div>
+      <ModuleHeader
+  logo="projecthealth-logo.png"
+  title="ProjectHealthOS"
+  subtitle="Project Health & Accountability"
+  description="Project health reviews, executive attention, risk trends, and accountability tracking."
+/>
 
       <div className="data-card">
         <h2>Add Review Item</h2>

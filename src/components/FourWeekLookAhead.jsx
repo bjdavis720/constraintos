@@ -1,32 +1,40 @@
 import { useMemo, useState } from "react";
+import * as XLSX from "xlsx-js-style";
 
 function FourWeekLookAhead({
   activities = [],
   project,
+  milestones = [],
   constraints = [],
+  issues = [],
+  submittals = [],
+  workZones = [],
+  pullPlans = {},
+  updateCurrentProjectData,
   setConstraintForm,
   setActivePage,
 }) {
-  const [activeView, setActiveView] = useState("gantt");
+  const [activeView, setActiveView] = useState("lookahead");
   const [primarySort, setPrimarySort] = useState("wbs");
   const [secondarySort, setSecondarySort] = useState("activityCode");
   const [selectedActivityCode, setSelectedActivityCode] = useState("");
   const [collapsedGroups, setCollapsedGroups] = useState({});
-  const [manualActivities, setManualActivities] = useState([]);
-  const [cardComments, setCardComments] = useState({});
-  const [pullPlanColumns, setPullPlanColumns] = useState({});
   const [draggedCardId, setDraggedCardId] = useState(null);
-
-  const [manualForm, setManualForm] = useState({
-    activityId: "",
-    activityName: "",
-    wbs: "",
-    start: "",
-    finish: "",
-    responsible: "",
-    totalFloat: "",
-    predecessors: [],
-    successors: [],
+const [draggedReferenceActivityId, setDraggedReferenceActivityId] = useState(null);
+  const [newZoneName, setNewZoneName] = useState("");
+  const [selectedMilestoneId, setSelectedMilestoneId] = useState(
+    milestones?.[0]?.id ? String(milestones[0].id) : ""
+  );
+  const [pullCardForm, setPullCardForm] = useState({
+    title: "",
+    trade: "",
+    zone: "",
+    weekOffset: "-1",
+    duration: "",
+    needs: "",
+    constraints: "",
+    handoff: "",
+    owner: "",
   });
 
   const today = new Date();
@@ -34,7 +42,6 @@ function FourWeekLookAhead({
 
   function normalizeDate(value) {
     if (!value) return null;
-
     const text = String(value).trim();
     if (!text) return null;
 
@@ -57,26 +64,22 @@ function FourWeekLookAhead({
   function addWorkDays(startDate, workDays) {
     const date = new Date(startDate);
     let added = 0;
-
     while (added < workDays - 1) {
       date.setDate(date.getDate() + 1);
       if (date.getDay() !== 0 && date.getDay() !== 6) added++;
     }
-
     return date;
   }
 
   function getWorkDaysBetween(start, end) {
     const days = [];
     const current = new Date(start);
-
     while (current <= end) {
       if (current.getDay() !== 0 && current.getDay() !== 6) {
         days.push(new Date(current));
       }
       current.setDate(current.getDate() + 1);
     }
-
     return days;
   }
 
@@ -88,12 +91,28 @@ function FourWeekLookAhead({
     });
   }
 
+  function formatFullDate(value) {
+    const date = normalizeDate(value);
+    if (!date) return "No date";
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  }
+
   function isSameDay(a, b) {
     return (
       a.getFullYear() === b.getFullYear() &&
       a.getMonth() === b.getMonth() &&
       a.getDate() === b.getDate()
     );
+  }
+
+  function getDurationDays(start, finish) {
+    if (!start || !finish) return "";
+    const ms = finish - start;
+    return Math.max(1, Math.round(ms / (1000 * 60 * 60 * 24)) + 1);
   }
 
   function getBestWbs(activity) {
@@ -131,7 +150,6 @@ function FourWeekLookAhead({
 
   function looksLikeActivityCodeKey(key) {
     const normalized = String(key).toUpperCase();
-
     const excluded = [
       "ACTIVITYID",
       "ACTIVITY ID",
@@ -174,74 +192,57 @@ function FourWeekLookAhead({
   }
 
   function getActivityCodeOptions(activityList) {
-  const codeSet = new Set();
+    const codeSet = new Set();
 
-  activityList.forEach((activity) => {
-    Object.keys(activity?.activityCodes || {}).forEach((key) => {
-      codeSet.add(key);
-    });
-
-    Object.keys(activity || {}).forEach((key) => {
-      if (looksLikeActivityCodeKey(key)) {
+    activityList.forEach((activity) => {
+      Object.keys(activity?.activityCodes || {}).forEach((key) => {
         codeSet.add(key);
-      }
+      });
+
+      Object.keys(activity || {}).forEach((key) => {
+        if (looksLikeActivityCodeKey(key)) codeSet.add(key);
+      });
     });
-  });
 
-  return Array.from(codeSet).sort();
-}
-
-function getActivityCodeDisplay(activity, codeName) {
-  if (!activity || !codeName) return "Unassigned";
-
-  const nestedValue = activity.activityCodes?.[codeName];
-
-  if (nestedValue) {
-    return (
-      nestedValue.description ||
-      nestedValue.codeDescription ||
-      nestedValue.desc ||
-      nestedValue.name ||
-      nestedValue.value ||
-      "Unassigned"
-    );
+    return Array.from(codeSet).sort();
   }
 
-  const exactValue = activity[codeName];
+  function getActivityCodeDisplay(activity, codeName) {
+    if (!activity || !codeName) return "Unassigned";
 
-  if (exactValue) {
-    if (typeof exactValue === "object") {
+    const nestedValue = activity.activityCodes?.[codeName];
+    if (nestedValue) {
       return (
-        exactValue.description ||
-        exactValue.codeDescription ||
-        exactValue.desc ||
-        exactValue.name ||
-        exactValue.value ||
+        nestedValue.description ||
+        nestedValue.codeDescription ||
+        nestedValue.desc ||
+        nestedValue.name ||
+        nestedValue.value ||
         "Unassigned"
       );
     }
 
-    return String(exactValue);
-  }
+    const exactValue = activity[codeName];
+    if (exactValue) {
+      if (typeof exactValue === "object") {
+        return (
+          exactValue.description ||
+          exactValue.codeDescription ||
+          exactValue.desc ||
+          exactValue.name ||
+          exactValue.value ||
+          "Unassigned"
+        );
+      }
+      return String(exactValue);
+    }
 
-  return "Unassigned";
-}
-  
-    function getWeekNumber(date) {
-    const diffTime = date - today;
-    const diffDays = Math.max(0, Math.floor(diffTime / (1000 * 60 * 60 * 24)));
-
-    if (diffDays <= 6) return "Week 1";
-    if (diffDays <= 13) return "Week 2";
-    if (diffDays <= 20) return "Week 3";
-    return "Week 4";
+    return "Unassigned";
   }
 
   function getSortValue(activity, sortType) {
     if (sortType === "wbs") return activity.wbs || "Unassigned WBS";
-    if (sortType === "activityCode") {
-      return activity.activityCodeGroup || "Unassigned";
-    }
+    if (sortType === "activityCode") return activity.activityCodeGroup || "Unassigned";
     if (sortType === "start") return activity.parsedStart;
     return "";
   }
@@ -253,16 +254,15 @@ function getActivityCodeDisplay(activity, codeName) {
 
   const lookAheadEnd = addWorkDays(today, 20);
   const workDays = getWorkDaysBetween(today, lookAheadEnd);
-  const allActivities = [...activities, ...manualActivities];
 
   const availableActivityCodes = useMemo(
-    () => getActivityCodeOptions(allActivities),
-    [activities, manualActivities]
+    () => getActivityCodeOptions(activities),
+    [activities]
   );
 
   const lookAheadActivities = useMemo(() => {
-    return allActivities
-      .map((activity) => {
+    return activities
+      .map((activity, index) => {
         const start =
           normalizeDate(activity.start) ||
           normalizeDate(activity.startDate) ||
@@ -280,7 +280,7 @@ function getActivityCodeDisplay(activity, codeName) {
           activity.id ||
           activity.taskCode ||
           activity.activity_id ||
-          crypto.randomUUID();
+          `activity-${index}`;
 
         const activityName =
           activity.activityName ||
@@ -297,8 +297,8 @@ function getActivityCodeDisplay(activity, codeName) {
 
         return {
           ...activity,
-          id: activityId,
-          activityId,
+          id: String(activityId),
+          activityId: String(activityId),
           name: activityName,
           parsedStart: start,
           parsedFinish: finish,
@@ -312,7 +312,6 @@ function getActivityCodeDisplay(activity, codeName) {
             null,
           predecessors: activity.predecessors || "",
           successors: activity.successors || "",
-          isManual: activity.isManual || false,
         };
       })
       .filter((activity) => {
@@ -334,118 +333,321 @@ function getActivityCodeDisplay(activity, codeName) {
           getSortValue(a, primarySort),
           getSortValue(b, primarySort)
         );
-
         if (primaryCompare !== 0) return primaryCompare;
 
         const secondaryCompare = compareSortValues(
           getSortValue(a, secondarySort),
           getSortValue(b, secondarySort)
         );
-
         if (secondaryCompare !== 0) return secondaryCompare;
 
         return a.parsedStart - b.parsedStart;
       });
-  }, [
-    activities,
-    manualActivities,
-    primarySort,
-    secondarySort,
-    selectedActivityCode,
-  ]);
-
-  const availableWbsOptions = [
-    ...new Set(lookAheadActivities.map((activity) => activity.wbs)),
-  ].sort();
-
-  const availableResponsibleOptions = [
-  ...new Set(
-    lookAheadActivities
-      .map((activity) => activity.activityCodeGroup || activity.responsible)
-      .filter((value) => value && value !== "Unassigned")
-  ),
-].sort();
-
-const availableActivityOptions = lookAheadActivities
-  .map((activity) => ({
-    id: activity.id,
-    name: activity.name,
-    finish: activity.parsedFinish,
-    start: activity.parsedStart,
-  }))
-  .sort((a, b) => a.id.localeCompare(b.id));
+  }, [activities, primarySort, secondarySort, selectedActivityCode]);
 
   const groupedActivities = lookAheadActivities.reduce((groups, activity) => {
-  const rawPrimaryKey = getSortValue(activity, primarySort) || "Unassigned";
-const rawSecondaryKey = getSortValue(activity, secondarySort) || "Unassigned";
+    const rawPrimaryKey = getSortValue(activity, primarySort) || "Unassigned";
+    const rawSecondaryKey = getSortValue(activity, secondarySort) || "Unassigned";
 
-const primaryKey =
-  rawPrimaryKey instanceof Date
-    ? rawPrimaryKey.toISOString()
-    : String(rawPrimaryKey);
+    const primaryKey = rawPrimaryKey instanceof Date ? rawPrimaryKey.toISOString() : String(rawPrimaryKey);
+    const secondaryKey = rawSecondaryKey instanceof Date ? rawSecondaryKey.toISOString() : String(rawSecondaryKey);
 
-const secondaryKey =
-  rawSecondaryKey instanceof Date
-    ? rawSecondaryKey.toISOString()
-    : String(rawSecondaryKey);
-
-  if (!groups[primaryKey]) {
-    groups[primaryKey] = {
-      items: [],
-      subgroups: {},
-    };
-  }
-
-  groups[primaryKey].items.push(activity);
-
-  if (!groups[primaryKey].subgroups[secondaryKey]) {
-    groups[primaryKey].subgroups[secondaryKey] = [];
-  }
-
-  groups[primaryKey].subgroups[secondaryKey].push(activity);
-
-  return groups;
-}, {});
-
-  const pullPlanBuckets = {
-    "Week 1": [],
-    "Week 2": [],
-    "Week 3": [],
-    "Week 4": [],
-    "Constraints / Not Ready": [],
-    "Ready / Committed": [],
-  };
-
-  lookAheadActivities.forEach((activity) => {
-    const column =
-      pullPlanColumns[activity.id] || getWeekNumber(activity.parsedStart);
-
-    if (!pullPlanBuckets[column]) {
-      pullPlanBuckets[column] = [];
+    if (!groups[primaryKey]) {
+      groups[primaryKey] = { items: [], subgroups: {} };
     }
 
-    pullPlanBuckets[column].push(activity);
-  });
+    groups[primaryKey].items.push(activity);
 
-  Object.keys(pullPlanBuckets).forEach((column) => {
-    pullPlanBuckets[column].sort((a, b) => {
-      const primaryCompare = compareSortValues(
-        getSortValue(a, primarySort),
-        getSortValue(b, primarySort)
-      );
+    if (!groups[primaryKey].subgroups[secondaryKey]) {
+      groups[primaryKey].subgroups[secondaryKey] = [];
+    }
 
-      if (primaryCompare !== 0) return primaryCompare;
+    groups[primaryKey].subgroups[secondaryKey].push(activity);
+    return groups;
+  }, {});
 
-      const secondaryCompare = compareSortValues(
-        getSortValue(a, secondarySort),
-        getSortValue(b, secondarySort)
-      );
+  const selectedMilestone = milestones.find(
+    (milestone) => String(milestone.id) === String(selectedMilestoneId)
+  );
 
-      if (secondaryCompare !== 0) return secondaryCompare;
+  const currentPullPlan = pullPlans?.[selectedMilestoneId] || {
+    milestoneId: selectedMilestoneId,
+    cards: [],
+  };
 
-      return a.parsedStart - b.parsedStart;
+  const pullCards = currentPullPlan.cards || [];
+  const readinessCounts = pullCards.reduce((counts, card) => {
+  const key = card.readiness || "needs-defined";
+  counts[key] = (counts[key] || 0) + 1;
+  return counts;
+}, {});
+  const zoneList = workZones && workZones.length > 0 ? workZones : ["Unassigned Zone"];
+  const tradeList = Array.from(
+    new Set(
+      [
+        ...lookAheadActivities.map((activity) => activity.activityCodeGroup),
+        ...pullCards.map((card) => card.trade),
+      ].filter((value) => value && value !== "Unassigned")
+    )
+  ).sort();
+
+  const pullWeekColumns = [
+    { label: "Week -6", value: "-6" },
+    { label: "Week -5", value: "-5" },
+    { label: "Week -4", value: "-4" },
+    { label: "Week -3", value: "-3" },
+    { label: "Week -2", value: "-2" },
+    { label: "Week -1", value: "-1" },
+    { label: "Milestone", value: "0" },
+  ];
+
+  function updatePullPlan(cards) {
+    if (!updateCurrentProjectData || !selectedMilestoneId) return;
+
+    updateCurrentProjectData({
+      pullPlans: {
+        ...(pullPlans || {}),
+        [selectedMilestoneId]: {
+          ...currentPullPlan,
+          milestoneId: selectedMilestoneId,
+          milestoneName: selectedMilestone?.name || "",
+          targetDate: selectedMilestone?.due || "",
+          cards,
+          updatedAt: new Date().toISOString(),
+        },
+      },
     });
-  });
+  }
+
+  function updateWorkZones(nextZones) {
+    if (!updateCurrentProjectData) return;
+    updateCurrentProjectData({ workZones: nextZones });
+  }
+
+  function addWorkZone(e) {
+    e.preventDefault();
+    const zoneName = newZoneName.trim();
+    if (!zoneName) return;
+
+    const nextZones = Array.from(new Set([...(workZones || []), zoneName]));
+    updateWorkZones(nextZones);
+    setNewZoneName("");
+  }
+
+  function removeWorkZone(zoneName) {
+    const confirmed = window.confirm(
+      `Remove ${zoneName} from work zones? Existing sprint plan cards will remain but show as unassigned until moved.`
+    );
+    if (!confirmed) return;
+    updateWorkZones((workZones || []).filter((zone) => zone !== zoneName));
+  }
+
+  function addPullCard(e) {
+    e.preventDefault();
+
+    if (!selectedMilestoneId) {
+      alert("Please select a milestone first.");
+      return;
+    }
+
+    if (!pullCardForm.title.trim()) {
+      alert("Please enter a sprint plan activity.");
+      return;
+    }
+
+    const newCard = {
+      id: `pull-${Date.now()}`,
+      ...pullCardForm,
+      weekOffset: pullCardForm.weekOffset || "-1",
+      zone: pullCardForm.zone || zoneList[0] || "Unassigned Zone",
+      trade: pullCardForm.trade || "Unassigned Trade",
+      readinessOverride: "",
+      source: "Manual Sprint Plan",
+      createdAt: new Date().toISOString(),
+    };
+
+    updatePullPlan([...pullCards, newCard]);
+
+    setPullCardForm({
+      title: "",
+      trade: "",
+      zone: "",
+      weekOffset: "-1",
+      duration: "",
+      needs: "",
+      constraints: "",
+      handoff: "",
+      owner: "",
+    });
+  }
+
+   function addScheduleActivityToPullPlan(activity, targetZone = "", targetWeekOffset = "-1") {
+    if (!selectedMilestoneId) {
+      alert("Please select a milestone first.");
+      return;
+    }
+
+    const alreadyAdded = pullCards.some(
+      (card) => card.linkedActivityId === activity.id
+    );
+
+    if (alreadyAdded) {
+      alert("This schedule activity is already on the sprint plan.");
+      return;
+    }
+
+    const newCard = {
+      id: `pull-${Date.now()}`,
+      title: activity.name,
+      trade: activity.activityCodeGroup || "Unassigned Trade",
+      zone: targetZone || activity.wbs || zoneList[0] || "Unassigned Zone",
+      weekOffset: String(targetWeekOffset || "-1"),
+      duration: getDurationDays(activity.parsedStart, activity.parsedFinish),
+      needs: activity.predecessors
+        ? `Predecessors complete: ${activity.predecessors}`
+        : "",
+      constraints: "",
+      handoff: activity.successors
+        ? `Feeds successors: ${activity.successors}`
+        : "",
+      owner: activity.responsible || "",
+      source: "CPM Reference",
+      linkedActivityId: activity.id,
+      activityId: activity.id,
+      start: activity.start || activity.startDate || "",
+      finish: activity.finish || activity.finishDate || "",
+      totalFloat: activity.float,
+      createdAt: new Date().toISOString(),
+    };
+
+    updatePullPlan([...pullCards, newCard]);
+  }
+
+  function updatePullCard(cardId, field, value) {
+    updatePullPlan(
+      pullCards.map((card) =>
+        card.id === cardId ? { ...card, [field]: value } : card
+      )
+    );
+  }
+
+  function deletePullCard(cardId) {
+    updatePullPlan(pullCards.filter((card) => card.id !== cardId));
+  }
+
+    function handlePullDrop(zone, weekOffset) {
+    if (draggedReferenceActivityId) {
+      const activity = lookAheadActivities.find(
+        (item) => String(item.id) === String(draggedReferenceActivityId)
+      );
+
+      if (activity) {
+        addScheduleActivityToPullPlan(activity, zone, weekOffset);
+      }
+
+      setDraggedReferenceActivityId(null);
+      return;
+    }
+
+    if (!draggedCardId) return;
+
+    updatePullPlan(
+      pullCards.map((card) =>
+        card.id === draggedCardId
+          ? { ...card, zone, weekOffset: String(weekOffset) }
+          : card
+      )
+    );
+
+    setDraggedCardId(null);
+  }
+
+  function getLinkedConstraints(card) {
+    const openStatuses = ["Open", "Waiting", "Escalated"];
+    return constraints.filter((constraint) => {
+      const linked =
+        constraint.activityId === card.linkedActivityId ||
+        constraint.linkedActivityId === card.linkedActivityId ||
+        constraint.sourceActivityId === card.linkedActivityId ||
+        constraint.activityId === card.id ||
+        constraint.linkedActivityId === card.id ||
+        constraint.milestone === card.title ||
+        constraint.description?.toLowerCase().includes(card.title?.toLowerCase());
+
+      return linked && openStatuses.includes(constraint.status || "Open");
+    });
+  }
+
+  function getLinkedIssues(card) {
+    return issues.filter((issue) => {
+      const linked =
+        issue.activityId === card.linkedActivityId ||
+        issue.sourceActivityId === card.linkedActivityId ||
+        issue.activityId === card.id ||
+        issue.title?.toLowerCase().includes(card.title?.toLowerCase());
+
+      return linked && issue.status !== "Closed" && !issue.archived;
+    });
+  }
+
+  function getLinkedSubmittals(card) {
+    return submittals.filter((submittal) => {
+      const text = `${submittal.title || ""} ${submittal.specSection || ""} ${submittal.responsibleContractor || ""}`.toLowerCase();
+      return (
+        card.trade &&
+        card.trade !== "Unassigned Trade" &&
+        text.includes(String(card.trade).toLowerCase()) &&
+        !["Approved", "Closed", "Complete"].includes(submittal.status)
+      );
+    });
+  }
+
+  function getReadiness(card) {
+    const linkedConstraints = getLinkedConstraints(card);
+    const linkedIssues = getLinkedIssues(card);
+    const linkedSubmittals = getLinkedSubmittals(card);
+    const hasTypedConstraints = Boolean(card.constraints?.trim());
+    const hasNeeds = Boolean(card.needs?.trim());
+
+    if (
+      linkedConstraints.some((constraint) => constraint.status === "Escalated") ||
+      linkedIssues.some((issue) => issue.manuallyEscalated) ||
+      card.readinessOverride === "not-ready"
+    ) {
+      return { label: "Not Ready", className: "not-ready" };
+    }
+
+    if (
+      linkedConstraints.length > 0 ||
+      linkedIssues.length > 0 ||
+      linkedSubmittals.length > 0 ||
+      hasTypedConstraints ||
+      card.readinessOverride === "at-risk"
+    ) {
+      return { label: "At Risk", className: "at-risk" };
+    }
+
+    if (!hasNeeds) return { label: "Needs Defined", className: "needs-defined" };
+
+    return { label: "Ready", className: "ready" };
+  }
+
+  function openConstraintForCard(card) {
+    if (setConstraintForm) {
+      setConstraintForm((prev) => ({
+        ...prev,
+        description: `Sprint plan constraint for ${card.title}`,
+        owner: card.owner || card.trade || "",
+        requiredBy: selectedMilestone?.due || "",
+        milestone: selectedMilestone?.name || card.title,
+        status: "Open",
+        activityId: card.linkedActivityId || card.id,
+        linkedActivityId: card.linkedActivityId || card.id,
+      }));
+    }
+
+    if (setActivePage) setActivePage("Constraint Board");
+  }
 
   function activityTouchesDay(activity, day) {
     return activity.parsedStart <= day && activity.parsedFinish >= day;
@@ -453,570 +655,675 @@ const secondaryKey =
 
   function getActivityClass(activity) {
     const floatValue = Number(activity.float);
-
-    if (!Number.isNaN(floatValue) && floatValue <= 0) {
-      return "gantt-cell active critical";
-    }
-
-    if (!Number.isNaN(floatValue) && floatValue <= 5) {
-      return "gantt-cell active near-critical";
-    }
-
+    if (!Number.isNaN(floatValue) && floatValue <= 0) return "gantt-cell active critical";
+    if (!Number.isNaN(floatValue) && floatValue <= 5) return "gantt-cell active near-critical";
     return "gantt-cell active";
   }
 
   function toggleGroup(groupName) {
-    setCollapsedGroups((prev) => ({
-      ...prev,
-      [groupName]: !prev[groupName],
-    }));
+    setCollapsedGroups((prev) => ({ ...prev, [groupName]: !prev[groupName] }));
   }
+function exportLookAheadToExcel() {
+  const timelineDays = workDays;
 
-  function activityHasConstraint(activity) {
-    return constraints.some(
-      (constraint) =>
-        constraint.activityId === activity.id ||
-        constraint.linkedActivityId === activity.id ||
-        constraint.sourceActivityId === activity.id
-    );
-  }
+  function getBarColor(activity) {
+    const floatValue = Number(activity.float);
 
-  function openConstraintForActivity(activity) {
-    if (setConstraintForm) {
-      setConstraintForm((prev) => ({
-        ...prev,
-        description: `Look ahead activity ${activity.id} needs constraint review: ${activity.name}`,
-        owner: activity.responsible,
-        requiredBy: activity.parsedStart
-          ? activity.parsedStart.toISOString().slice(0, 10)
-          : "",
-        milestone: activity.name,
-        status: "Open",
-        activityId: activity.id,
-        linkedActivityId: activity.id,
-      }));
+    if (!Number.isNaN(floatValue) && floatValue <= 0) {
+      return "C00000"; // red - critical
     }
 
-    if (setActivePage) {
-      setActivePage("Constraint Board");
+    if (!Number.isNaN(floatValue) && floatValue <= 5) {
+      return "F4B183"; // orange - near critical
+    }
+
+    return "70AD47"; // green - normal
+  }
+
+  function isFriday(day) {
+    return day.getDay() === 5;
+  }
+
+  const rows = [];
+
+  rows.push([
+    "Activity ID",
+    "Activity",
+    "Start",
+    "Finish",
+    "Float",
+    "Responsible Party",
+    ...timelineDays.map((day) => formatDate(day)),
+  ]);
+
+  Object.entries(groupedActivities).forEach(([primaryName, group]) => {
+    rows.push([]);
+    rows.push([`WBS: ${primaryName}`]);
+
+    Object.entries(group.subgroups).forEach(([secondaryName, items]) => {
+      rows.push([secondaryName]);
+
+      items.forEach((activity) => {
+        rows.push([
+          activity.id,
+          activity.name,
+          formatFullDate(activity.parsedStart),
+          formatFullDate(activity.parsedFinish),
+          activity.float !== null &&
+          activity.float !== undefined &&
+          activity.float !== ""
+            ? Math.round(Number(activity.float))
+            : "",
+          activity.activityCodeGroup || "Unassigned",
+          ...timelineDays.map((day) =>
+            activityTouchesDay(activity, day) ? "■" : ""
+          ),
+        ]);
+      });
+    });
+  });
+
+  const worksheet = XLSX.utils.aoa_to_sheet(rows);
+
+  worksheet["!cols"] = [
+    { wch: 18 },
+    { wch: 55 },
+    { wch: 16 },
+    { wch: 16 },
+    { wch: 10 },
+    { wch: 30 },
+    ...timelineDays.map(() => ({ wch: 5 })),
+  ];
+
+  worksheet["!freeze"] = { xSplit: 6, ySplit: 1 };
+
+  worksheet["!pageSetup"] = {
+    orientation: "landscape",
+    fitToWidth: 1,
+    fitToHeight: 0,
+  };
+
+  worksheet["!margins"] = {
+    left: 0.25,
+    right: 0.25,
+    top: 0.5,
+    bottom: 0.5,
+    header: 0.2,
+    footer: 0.2,
+  };
+
+  const range = XLSX.utils.decode_range(worksheet["!ref"]);
+
+  for (let R = range.s.r; R <= range.e.r; R++) {
+    const firstCellAddress = XLSX.utils.encode_cell({ r: R, c: 0 });
+    const firstCellValue = String(worksheet[firstCellAddress]?.v || "");
+
+    const isWbsRow = firstCellValue.startsWith("WBS:");
+    const isSubgroupRow =
+      !isWbsRow &&
+      firstCellValue &&
+      !worksheet[XLSX.utils.encode_cell({ r: R, c: 1 })]?.v &&
+      R !== 0;
+
+    const activityId = firstCellValue;
+    const matchingActivity = lookAheadActivities.find(
+      (activity) => String(activity.id) === String(activityId)
+    );
+
+    for (let C = range.s.c; C <= range.e.c; C++) {
+      const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
+
+      if (!worksheet[cellAddress]) {
+        worksheet[cellAddress] = { v: "" };
+      }
+
+      const cell = worksheet[cellAddress];
+      const value = String(cell.v || "");
+
+      const border = {
+        top: { style: "thin", color: { rgb: "D9D9D9" } },
+        bottom: { style: "thin", color: { rgb: "D9D9D9" } },
+        left: { style: "thin", color: { rgb: "D9D9D9" } },
+        right: { style: "thin", color: { rgb: "D9D9D9" } },
+      };
+
+      if (C >= 6 && isFriday(timelineDays[C - 6])) {
+        border.right = { style: "medium", color: { rgb: "808080" } };
+      }
+
+      cell.s = {
+        font: { name: "Calibri", sz: 11 },
+        alignment: {
+          vertical: "center",
+          wrapText: true,
+        },
+        border,
+      };
+
+      if (R === 0) {
+        cell.s = {
+          ...cell.s,
+          font: { bold: true, color: { rgb: "FFFFFF" } },
+          fill: { fgColor: { rgb: "1F4E78" } },
+          alignment: {
+            horizontal: "center",
+            vertical: "center",
+            wrapText: true,
+          },
+        };
+      }
+
+      if (isWbsRow) {
+        cell.s = {
+          ...cell.s,
+          font: { bold: true, color: { rgb: "FFFFFF" } },
+          fill: { fgColor: { rgb: "404040" } },
+        };
+      }
+
+      if (isSubgroupRow) {
+        cell.s = {
+          ...cell.s,
+          font: { bold: true },
+          fill: { fgColor: { rgb: "D9EAF7" } },
+        };
+      }
+
+      if (C >= 6 && value === "■" && matchingActivity) {
+        const color = getBarColor(matchingActivity);
+
+        cell.s = {
+          ...cell.s,
+          font: { color: { rgb: color } },
+          fill: { fgColor: { rgb: color } },
+          alignment: {
+            horizontal: "center",
+            vertical: "center",
+          },
+        };
+      }
     }
   }
 
-  function handleManualChange(e) {
-    const { name, value } = e.target;
+  const responsibleCounts = lookAheadActivities.reduce((totals, activity) => {
+    const responsible = activity.activityCodeGroup || "Unassigned";
+    totals[responsible] = (totals[responsible] || 0) + 1;
+    return totals;
+  }, {});
 
-    const updatedForm = {
-      ...manualForm,
-      [name]: value,
-    };
+  const summaryRows = [
+    ["Responsible Party", "Activity Count"],
+    ...Object.entries(responsibleCounts)
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([responsible, count]) => [responsible, count]),
+  ];
 
-    const calculatedFloat = calculateManualFloat(updatedForm);
+  const summarySheet = XLSX.utils.aoa_to_sheet(summaryRows);
 
-    setManualForm({
-      ...updatedForm,
-      totalFloat: calculatedFloat,
-    });
-  }
+  summarySheet["!cols"] = [{ wch: 35 }, { wch: 18 }];
 
-  function handleMultiSelectChange(e, fieldName) {
-    const selectedValues = Array.from(e.target.selectedOptions).map(
-      (option) => option.value
-    );
+  const summaryRange = XLSX.utils.decode_range(summarySheet["!ref"]);
 
-    const updatedForm = {
-      ...manualForm,
-      [fieldName]: selectedValues,
-    };
+  for (let R = summaryRange.s.r; R <= summaryRange.e.r; R++) {
+    for (let C = summaryRange.s.c; C <= summaryRange.e.c; C++) {
+      const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
+      if (!summarySheet[cellAddress]) continue;
 
-    const calculatedFloat = calculateManualFloat(updatedForm);
-
-    setManualForm({
-      ...updatedForm,
-      totalFloat: calculatedFloat,
-    });
-  }
-
-  function calculateManualFloat(form) {
-    const start = normalizeDate(form.start);
-    const finish = normalizeDate(form.finish);
-
-    if (!start || !finish) return "";
-
-    const selectedSuccessors = availableActivityOptions.filter((activity) =>
-      form.successors.includes(activity.id)
-    );
-
-    if (selectedSuccessors.length === 0) return "";
-
-    const earliestSuccessorStart = selectedSuccessors
-      .map((activity) => activity.start)
-      .filter(Boolean)
-      .sort((a, b) => a - b)[0];
-
-    if (!earliestSuccessorStart) return "";
-
-    const diffMs = earliestSuccessorStart - finish;
-    return Math.round(diffMs / (1000 * 60 * 60 * 24));
-  }
-
-  function addManualActivity(e) {
-    e.preventDefault();
-
-    if (
-      !manualForm.activityId ||
-      !manualForm.activityName ||
-      !manualForm.start ||
-      !manualForm.finish
-    ) {
-      alert("Please enter activity ID, activity name, start, and finish.");
-      return;
+      summarySheet[cellAddress].s = {
+        font: {
+          name: "Calibri",
+          sz: 11,
+          bold: R === 0,
+          color: R === 0 ? { rgb: "FFFFFF" } : undefined,
+        },
+        fill: R === 0 ? { fgColor: { rgb: "1F4E78" } } : undefined,
+        alignment: {
+          vertical: "center",
+          wrapText: true,
+        },
+        border: {
+          top: { style: "thin", color: { rgb: "D9D9D9" } },
+          bottom: { style: "thin", color: { rgb: "D9D9D9" } },
+          left: { style: "thin", color: { rgb: "D9D9D9" } },
+          right: { style: "thin", color: { rgb: "D9D9D9" } },
+        },
+      };
     }
-
-    const newActivity = {
-      id: manualForm.activityId,
-      activityId: manualForm.activityId,
-      activityName: manualForm.activityName,
-      start: manualForm.start,
-      finish: manualForm.finish,
-      wbs: manualForm.wbs || "Manual Activities",
-      responsible: manualForm.responsible || "Unassigned",
-activityCodeGroup: manualForm.responsible || "Unassigned",
-      totalFloat: manualForm.totalFloat || "",
-      predecessors: manualForm.predecessors.join(", "),
-      successors: manualForm.successors.join(", "),
-      isManual: true,
-    };
-
-    setManualActivities((prev) => [...prev, newActivity]);
-
-    setManualForm({
-      activityId: "",
-      activityName: "",
-      wbs: "",
-      start: "",
-      finish: "",
-      responsible: "",
-      totalFloat: "",
-      predecessors: [],
-      successors: [],
-    });
   }
 
-  function handleDrop(column) {
-    if (!draggedCardId) return;
+  const workbook = XLSX.utils.book_new();
 
-    setPullPlanColumns((prev) => ({
-      ...prev,
-      [draggedCardId]: column,
-    }));
+  XLSX.utils.book_append_sheet(workbook, worksheet, "4 Week Look Ahead");
+  XLSX.utils.book_append_sheet(workbook, summarySheet, "By Responsible Party");
 
-    setDraggedCardId(null);
-  }
-
-  function updateComment(activityId, value) {
-    setCardComments((prev) => ({
-      ...prev,
-      [activityId]: value,
-    }));
-  }
+  XLSX.writeFile(
+    workbook,
+    `${project || "Project"} - 4 Week Look Ahead.xlsx`
+  );
+}
 
   return (
-    <div className="page">
+    <div className="page pull-planning-page">
       <div className="page-header">
-        <h1>4-Week Look Ahead and Pull Plan</h1>
-        <p>{project}</p>
+        <div>
+          <h1>Look Ahead Planning</h1>
+          <p>{project}</p>
+        </div>
       </div>
 
       <div className="lookahead-tabs">
         <button
           type="button"
-          className={activeView === "gantt" ? "active" : ""}
-          onClick={() => setActiveView("gantt")}
+          className={activeView === "lookahead" ? "active" : ""}
+          onClick={() => setActiveView("lookahead")}
         >
-          Gantt View
+          4-Week Look Ahead
         </button>
-
         <button
           type="button"
           className={activeView === "pullplan" ? "active" : ""}
           onClick={() => setActiveView("pullplan")}
         >
-          Pull Plan Board
+          Sprint Plan Builder
         </button>
       </div>
 
-      <div className="lookahead-controls">
-        <select
-          value={primarySort}
-          onChange={(e) => setPrimarySort(e.target.value)}
-        >
-          <option value="wbs">Primary: WBS</option>
-          <option value="activityCode">Primary: Activity Code</option>
-          <option value="start">Primary: Start Date</option>
-        </select>
+      {activeView === "lookahead" && (
+        <>
+          <div className="lookahead-controls">
+            <select value={primarySort} onChange={(e) => setPrimarySort(e.target.value)}>
+              <option value="wbs">Primary: WBS / Area</option>
+              <option value="activityCode">Primary: Activity Code</option>
+              <option value="start">Primary: Start Date</option>
+            </select>
 
-        <select
-          value={secondarySort}
-          onChange={(e) => setSecondarySort(e.target.value)}
-        >
-          <option value="wbs">Secondary: WBS</option>
-          <option value="activityCode">Secondary: Activity Code</option>
-          <option value="start">Secondary: Start Date</option>
-        </select>
+            <select value={secondarySort} onChange={(e) => setSecondarySort(e.target.value)}>
+              <option value="wbs">Secondary: WBS / Area</option>
+              <option value="activityCode">Secondary: Activity Code</option>
+              <option value="start">Secondary: Start Date</option>
+            </select>
 
-        <select
-          value={selectedActivityCode}
-          onChange={(e) => setSelectedActivityCode(e.target.value)}
-        >
-          <option value="">Select Activity Code</option>
-          {availableActivityCodes.map((code) => (
-            <option key={code} value={code}>
-              {code}
-            </option>
-          ))}
-        </select>
+            <select value={selectedActivityCode} onChange={(e) => setSelectedActivityCode(e.target.value)}>
+              <option value="">Select Activity Code</option>
+              {availableActivityCodes.map((code) => (
+                <option key={code} value={code}>{code}</option>
+              ))}
+            </select>
 
-        <button type="button" onClick={() => window.print()}>
-          Print Current View
-        </button>
-      </div>
-
-      <div className="card">
-        <h2>Manual Look Ahead Activity</h2>
-
-        <form className="manual-activity-form" onSubmit={addManualActivity}>
-          <input
-            name="activityId"
-            value={manualForm.activityId}
-            onChange={handleManualChange}
-            placeholder="Activity ID"
-          />
-
-          <input
-            name="activityName"
-            value={manualForm.activityName}
-            onChange={handleManualChange}
-            placeholder="Activity Name"
-          />
-
-          <select name="wbs" value={manualForm.wbs} onChange={handleManualChange}>
-            <option value="">Select WBS / Area</option>
-            {availableWbsOptions.map((wbs) => (
-              <option key={wbs} value={wbs}>
-                {wbs}
-              </option>
-            ))}
-            <option value="Manual Activities">Manual Activities</option>
-          </select>
-
-          <input
-            name="start"
-            type="date"
-            value={manualForm.start}
-            onChange={handleManualChange}
-          />
-
-          <input
-            name="finish"
-            type="date"
-            value={manualForm.finish}
-            onChange={handleManualChange}
-          />
-
-          <select
-  name="responsible"
-  value={manualForm.responsible}
-  onChange={handleManualChange}
+            <button
+  type="button"
+  onClick={exportLookAheadToExcel}
 >
-  <option value="">Select Responsible / Trade</option>
+  Export Excel
+</button>
 
-  {availableResponsibleOptions.map((responsible) => (
-    <option key={responsible} value={responsible}>
-      {responsible}
-    </option>
-  ))}
+<button
+  type="button"
+  onClick={() => window.print()}
+>
+  Print Current View
+</button>
+          </div>
 
-  <option value="Unassigned">Unassigned</option>
-</select>
+          <div className="card">
+            <h2>Next 20 Work Days</h2>
+            <p>
+              This remains the CPM-driven look ahead. Use the Sprint Plan Builder tab for milestone-first reverse planning by work zone, trade, needs, and constraints.
+            </p>
+          </div>
 
-          <input
-            name="totalFloat"
-            value={manualForm.totalFloat}
-            readOnly
-            placeholder="Auto Float"
-          />
+          {lookAheadActivities.length === 0 ? (
+            <div className="card"><p>No activities were found in the next 20 work days.</p></div>
+          ) : (
+            <div className="lookahead-wrapper">
+              {Object.entries(groupedActivities).map(([primaryName, group]) => {
+                const primaryCollapsed = collapsedGroups[`primary-${primaryName}`];
 
-          <select
-            name="predecessors"
-            value={manualForm.predecessors[0] || ""}
-            onChange={(e) =>
-              handleMultiSelectChange(
-                { target: { selectedOptions: [{ value: e.target.value }] } },
-                "predecessors"
-              )
-            }
-          >
-            <option value="">Select Predecessor</option>
-            {availableActivityOptions.map((activity) => (
-              <option key={activity.id} value={activity.id}>
-                {activity.id} - {activity.name}
-              </option>
-            ))}
-          </select>
-
-          <select
-            name="successors"
-            value={manualForm.successors[0] || ""}
-            onChange={(e) =>
-              handleMultiSelectChange(
-                { target: { selectedOptions: [{ value: e.target.value }] } },
-                "successors"
-              )
-            }
-          >
-            <option value="">Select Successor</option>
-            {availableActivityOptions.map((activity) => (
-              <option key={activity.id} value={activity.id}>
-                {activity.id} - {activity.name}
-              </option>
-            ))}
-          </select>
-
-          <button type="submit">Add Activity</button>
-        </form>
-      </div>
-
-      <div className="card">
-        <h2>Next 20 Work Days</h2>
-        <p>
-          This view includes incomplete activities active today or scheduled
-          within the next 20 work days.
-        </p>
-      </div>
-
-      {lookAheadActivities.length === 0 ? (
-        <div className="card">
-          <p>No activities were found in the next 20 work days.</p>
-        </div>
-      ) : activeView === "gantt" ? (
-        <div className="lookahead-wrapper">
-          {Object.entries(groupedActivities).map(([primaryName, group]) => {
-  const primaryCollapsed = collapsedGroups[`primary-${primaryName}`];
-
-  return (
-    <div className="lookahead-wbs-group" key={primaryName}>
-      <button
-        type="button"
-        className="lookahead-wbs-heading"
-        onClick={() => toggleGroup(`primary-${primaryName}`)}
-      >
-        <span>
-          {primaryCollapsed ? "▶" : "▼"} {primaryName} —{" "}
-          {group.items.length} activities
-        </span>
-      </button>
-
-      {!primaryCollapsed &&
-        Object.entries(group.subgroups).map(([secondaryName, items]) => {
-          const secondaryKey = `secondary-${primaryName}-${secondaryName}`;
-          const secondaryCollapsed = collapsedGroups[secondaryKey];
-
-          return (
-            <div className="lookahead-wbs-group" key={secondaryKey}>
-              <button
-                type="button"
-                className="lookahead-wbs-heading secondary-heading"
-                onClick={() => toggleGroup(secondaryKey)}
-              >
-                <span>
-                  {secondaryCollapsed ? "▶" : "▼"} {secondaryName} —{" "}
-                  {items.length} activities
-                </span>
-              </button>
-
-              {!secondaryCollapsed && (
-                <>
-                  <div className="lookahead-grid lookahead-grid-header">
-                    <div>Activity</div>
-                    <div>Start</div>
-                    <div>Finish</div>
-                    <div>Float</div>
-
-                    {workDays.map((day) => (
-                      <div
-                        key={day.toISOString()}
-                        className={
-                          isSameDay(day, today)
-                            ? "lookahead-day today"
-                            : "lookahead-day"
-                        }
-                      >
-                        {formatDate(day)}
-                      </div>
-                    ))}
-                  </div>
-
-                  {items.map((activity) => (
-                    <div className="lookahead-grid" key={activity.id}>
-                      <div className="activity-name">
-                        <strong>
-                          {activity.id}
-                          {activity.isManual ? " *" : ""}
-                        </strong>
-                        <span>{activity.name}</span>
-                        <small>{activity.activityCodeGroup}</small>
-                      </div>
-
-                      <div>{formatDate(activity.parsedStart)}</div>
-                      <div>{formatDate(activity.parsedFinish)}</div>
-                      <div>
-                        {activity.float !== null &&
-                        activity.float !== undefined &&
-                        activity.float !== ""
-                          ? `${Math.round(Number(activity.float))}d`
-                          : "-"}
-                      </div>
-
-                      {workDays.map((day) => (
-                        <div
-                          key={`${activity.id}-${day.toISOString()}`}
-                          className={
-                            activityTouchesDay(activity, day)
-                              ? activity.isManual
-                                ? "gantt-cell active manual"
-                                : getActivityClass(activity)
-                              : isSameDay(day, today)
-                              ? "gantt-cell today"
-                              : "gantt-cell"
-                          }
-                        />
-                      ))}
-                    </div>
-                  ))}
-                </>
-              )}
-            </div>
-          );
-        })}
-    </div>
-  );
-})}
-        </div>
-      ) : (
-        <div className="pull-plan-board pull-plan-board-expanded">
-          {Object.entries(pullPlanBuckets).map(([column, items]) => (
-            <div
-              className="pull-plan-column"
-              key={column}
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={() => handleDrop(column)}
-            >
-              <div className="pull-plan-column-header">
-                <h3>{column}</h3>
-                <span>{items.length} activities</span>
-              </div>
-
-              {items.length === 0 ? (
-                <div className="pull-plan-empty">Drop activities here</div>
-              ) : (
-                items.map((activity) => {
-                  const hasConstraint = activityHasConstraint(activity);
-                  const floatValue = Number(activity.float);
-                  const isCritical =
-                    !Number.isNaN(floatValue) && floatValue <= 0;
-                  const isNearCritical =
-                    !Number.isNaN(floatValue) &&
-                    floatValue > 0 &&
-                    floatValue <= 5;
-
-                  return (
-                    <div
-                      draggable
-                      onDragStart={() => setDraggedCardId(activity.id)}
-                      className={
-                        activity.isManual
-                          ? "sticky-note manual"
-                          : isCritical
-                          ? "sticky-note critical"
-                          : isNearCritical
-                          ? "sticky-note near-critical"
-                          : "sticky-note"
-                      }
-                      key={activity.id}
+                return (
+                  <div className="lookahead-wbs-group" key={primaryName}>
+                    <button
+                      type="button"
+                      className="lookahead-wbs-heading"
+                      onClick={() => toggleGroup(`primary-${primaryName}`)}
                     >
-                      <div className="sticky-note-top">
-                        <strong>{activity.id}</strong>
-                        <span>{activity.activityCodeGroup}</span>
-                      </div>
+                      <span>{primaryCollapsed ? "▶" : "▼"} {primaryName} — {group.items.length} activities</span>
+                    </button>
 
-                      <h4>{activity.name}</h4>
-                      <p>{activity.wbs}</p>
+                    {!primaryCollapsed && Object.entries(group.subgroups).map(([secondaryName, items]) => {
+                      const secondaryKey = `secondary-${primaryName}-${secondaryName}`;
+                      const secondaryCollapsed = collapsedGroups[secondaryKey];
 
-                      <div className="sticky-note-meta">
-                        <span>
-                          {formatDate(activity.parsedStart)} -{" "}
-                          {formatDate(activity.parsedFinish)}
-                        </span>
+                      return (
+                        <div className="lookahead-wbs-group" key={secondaryKey}>
+                          <button
+                            type="button"
+                            className="lookahead-wbs-heading secondary-heading"
+                            onClick={() => toggleGroup(secondaryKey)}
+                          >
+                            <span>{secondaryCollapsed ? "▶" : "▼"} {secondaryName} — {items.length} activities</span>
+                          </button>
 
-                        <span>
-                          Float:{" "}
-                          {activity.float !== null &&
-                          activity.float !== undefined &&
-                          activity.float !== ""
-                            ? `${Math.round(Number(activity.float))}d`
-                            : "-"}
-                        </span>
-                      </div>
+                          {!secondaryCollapsed && (
+                            <>
+                              <div className="lookahead-grid lookahead-grid-header">
+                                <div>Activity</div>
+                                <div>Start</div>
+                                <div>Finish</div>
+                                <div>Float</div>
+                                {workDays.map((day) => (
+                                  <div key={day.toISOString()} className={isSameDay(day, today) ? "lookahead-day today" : "lookahead-day"}>
+                                    {formatDate(day)}
+                                  </div>
+                                ))}
+                              </div>
 
-                      {(activity.predecessors || activity.successors) && (
-                        <div className="sticky-note-logic">
-                          {activity.predecessors && (
-                            <span>Pred: {activity.predecessors}</span>
-                          )}
-                          {activity.successors && (
-                            <span>Succ: {activity.successors}</span>
+                              {items.map((activity) => (
+                                <div className="lookahead-grid" key={activity.id}>
+                                  <div className="activity-name">
+                                    <strong>{activity.id}</strong>
+                                    <span>{activity.name}</span>
+                                    <small>{activity.activityCodeGroup}</small>
+                                  </div>
+                                  <div>{formatDate(activity.parsedStart)}</div>
+                                  <div>{formatDate(activity.parsedFinish)}</div>
+                                  <div>
+                                    {activity.float !== null && activity.float !== undefined && activity.float !== ""
+                                      ? `${Math.round(Number(activity.float))}d`
+                                      : "-"}
+                                  </div>
+                                  {workDays.map((day) => (
+                                    <div
+                                      key={`${activity.id}-${day.toISOString()}`}
+                                      className={activityTouchesDay(activity, day)
+                                        ? getActivityClass(activity)
+                                        : isSameDay(day, today)
+                                        ? "gantt-cell today"
+                                        : "gantt-cell"}
+                                    />
+                                  ))}
+                                </div>
+                              ))}
+                            </>
                           )}
                         </div>
-                      )}
+                      );
+                    })}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </>
+      )}
 
-                      <textarea
-                        className="sticky-note-comments"
-                        value={cardComments[activity.id] || ""}
-                        onChange={(e) =>
-                          updateComment(activity.id, e.target.value)
-                        }
-                        placeholder="Add planning comments, constraints, crew notes..."
-                      />
+      {activeView === "pullplan" && (
+        <>
+          <div className="pull-plan-hero card">
+            <div>
+              <h2>Sprint Plan Builder</h2>
+              <p>
+                Start with the milestone, establish work zones, then work backward by trade. Notes are now structured as needs, handoff conditions, and constraints.
+              </p>
+            </div>
 
-                      <div className="sticky-note-status">
-                        {hasConstraint ? (
-                          <span className="constraint-pill has-constraint">
-                            Constraint Linked
-                          </span>
-                        ) : (
-                          <span className="constraint-pill ready-review">
-                            Needs Review
-                          </span>
-                        )}
-                      </div>
+            <div className="pull-plan-milestone-selector">
+              <label>Milestone</label>
+              <select
+                value={selectedMilestoneId}
+                onChange={(e) => setSelectedMilestoneId(e.target.value)}
+              >
+                <option value="">Select milestone</option>
+                {milestones.filter((m) => !m.archived).map((milestone) => (
+                  <option key={milestone.id} value={String(milestone.id)}>
+                    {milestone.name} — {formatFullDate(milestone.due)}
+                  </option>
+                ))}
+              </select>
+              <span>{selectedMilestone ? `Target: ${formatFullDate(selectedMilestone.due)}` : "Select a milestone to begin."}</span>
+            </div>
+          </div>
 
-                      <button
-                        type="button"
-                        className="small-action-button"
-                        onClick={() => openConstraintForActivity(activity)}
-                      >
-                        Add / Review Constraint
-                      </button>
+          <div className="pull-plan-metrics">
+            <div className="mini-metric"><strong>{pullCards.length}</strong><span>Sprint Plan Cards</span></div>
+            <div className="mini-metric"><strong>{readinessCounts.ready || 0}</strong><span>Ready</span></div>
+            <div className="mini-metric"><strong>{readinessCounts["at-risk"] || 0}</strong><span>At Risk</span></div>
+            <div className="mini-metric"><strong>{readinessCounts["not-ready"] || 0}</strong><span>Not Ready</span></div>
+          </div>
+
+          <div className="pull-plan-setup-grid">
+            <div className="card">
+              <h2>Work Zones</h2>
+              <p>Use areas, floors, wings, buildings, or site zones. This is how the sprint plan organizes flow.</p>
+              <form className="pull-zone-form" onSubmit={addWorkZone}>
+                <input
+                  value={newZoneName}
+                  onChange={(e) => setNewZoneName(e.target.value)}
+                  placeholder="Area A, Level 2, East Wing, Site, etc."
+                />
+                <button type="submit">Add Zone</button>
+              </form>
+              <div className="work-zone-pill-list">
+                {(workZones || []).length === 0 ? (
+                  <span className="muted-text">No zones established yet.</span>
+                ) : (
+                  workZones.map((zone) => (
+                    <button key={zone} type="button" onClick={() => removeWorkZone(zone)}>
+                      {zone} ×
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
+
+            <div className="card">
+              <h2>Add Sprint Plan Card</h2>
+              <form className="pull-card-form" onSubmit={addPullCard}>
+                <input
+                  value={pullCardForm.title}
+                  onChange={(e) => setPullCardForm((prev) => ({ ...prev, title: e.target.value }))}
+                  placeholder="Work activity"
+                />
+                <select
+                  value={pullCardForm.zone}
+                  onChange={(e) => setPullCardForm((prev) => ({ ...prev, zone: e.target.value }))}
+                >
+                  <option value="">Select Zone</option>
+                  {zoneList.map((zone) => <option key={zone} value={zone}>{zone}</option>)}
+                </select>
+                <input
+                  value={pullCardForm.trade}
+                  onChange={(e) => setPullCardForm((prev) => ({ ...prev, trade: e.target.value }))}
+                  placeholder="Trade / responsible party"
+                  list="trade-options"
+                />
+                <datalist id="trade-options">
+                  {tradeList.map((trade) => <option key={trade} value={trade} />)}
+                </datalist>
+                <select
+                  value={pullCardForm.weekOffset}
+                  onChange={(e) => setPullCardForm((prev) => ({ ...prev, weekOffset: e.target.value }))}
+                >
+                  {pullWeekColumns.map((column) => (
+                    <option key={column.value} value={column.value}>{column.label}</option>
+                  ))}
+                </select>
+                <input
+                  value={pullCardForm.duration}
+                  onChange={(e) => setPullCardForm((prev) => ({ ...prev, duration: e.target.value }))}
+                  placeholder="Duration"
+                />
+                <input
+                  value={pullCardForm.owner}
+                  onChange={(e) => setPullCardForm((prev) => ({ ...prev, owner: e.target.value }))}
+                  placeholder="Commitment owner"
+                />
+                <textarea
+                  value={pullCardForm.needs}
+                  onChange={(e) => setPullCardForm((prev) => ({ ...prev, needs: e.target.value }))}
+                  placeholder="Needs to start"
+                />
+                <textarea
+                  value={pullCardForm.handoff}
+                  onChange={(e) => setPullCardForm((prev) => ({ ...prev, handoff: e.target.value }))}
+                  placeholder="Handoff condition"
+                />
+                <textarea
+                  value={pullCardForm.constraints}
+                  onChange={(e) => setPullCardForm((prev) => ({ ...prev, constraints: e.target.value }))}
+                  placeholder="Known constraints"
+                />
+                <button type="submit">Add Card</button>
+              </form>
+            </div>
+          </div>
+
+          <div className="pull-plan-layout">
+            <div className="pull-plan-wall-card card">
+              <div className="pull-plan-wall-header">
+                <div>
+                  <h2>{selectedMilestone ? selectedMilestone.name : "Select a Milestone"}</h2>
+                  <p>Digital sticky-note wall: work zones vertically, time pulled backward horizontally.</p>
+                </div>
+                <button type="button" className="secondary-button" onClick={() => window.print()}>Print Sprint Plan</button>
+              </div>
+
+              <div className="pull-plan-wall">
+                <div className="pull-plan-wall-grid pull-plan-wall-grid-header">
+                  <div className="pull-plan-zone-heading">Zone / Trade</div>
+                  {pullWeekColumns.map((column) => (
+                    <div key={column.value}>{column.label}</div>
+                  ))}
+                </div>
+
+                {zoneList.map((zone) => {
+                  const zoneCards = pullCards.filter((card) => card.zone === zone || (!card.zone && zone === "Unassigned Zone"));
+                  const zoneTrades = Array.from(new Set(zoneCards.map((card) => card.trade || "Unassigned Trade"))).sort();
+                  const tradesToShow = zoneTrades.length > 0 ? zoneTrades : ["Unassigned Trade"];
+const readinessCounts = pullCards.reduce((counts, card) => {
+  const key = card.readiness || "needs-defined";
+
+  counts[key] = (counts[key] || 0) + 1;
+
+  return counts;
+}, {});
+                  return (
+                    <div className="pull-zone-section" key={zone}>
+                      <div className="pull-zone-title">{zone}</div>
+
+                      {tradesToShow.map((trade) => (
+                        <div className="pull-plan-wall-grid" key={`${zone}-${trade}`}>
+                          <div className="pull-trade-heading">{trade}</div>
+
+                          {pullWeekColumns.map((column) => {
+                            const cards = pullCards.filter(
+                              (card) =>
+                                (card.zone || "Unassigned Zone") === zone &&
+                                (card.trade || "Unassigned Trade") === trade &&
+                                String(card.weekOffset || "-1") === String(column.value)
+                            );
+
+                            return (
+                              <div
+                                key={`${zone}-${trade}-${column.value}`}
+                                className="pull-plan-drop-cell"
+                                onDragOver={(e) => e.preventDefault()}
+                                onDrop={() => handlePullDrop(zone, column.value)}
+                              >
+                                {cards.map((card) => {
+                                  const readiness = getReadiness(card);
+                                  const linkedConstraints = getLinkedConstraints(card);
+                                  const linkedIssues = getLinkedIssues(card);
+                                  const linkedSubmittals = getLinkedSubmittals(card);
+
+                                  return (
+                                    <div
+                                      key={card.id}
+                                      draggable
+                                      onDragStart={() => setDraggedCardId(card.id)}
+                                      className={`pull-sticky-note ${readiness.className}`}
+                                    >
+                                      <div className="pull-sticky-note-top">
+                                        <strong>{card.title}</strong>
+                                        <span className={`readiness-chip ${readiness.className}`}>{readiness.label}</span>
+                                      </div>
+
+                                      <div className="pull-sticky-note-meta">
+                                        <span>{card.duration ? `${card.duration} days` : "Duration TBD"}</span>
+                                        <span>{card.source}</span>
+                                      </div>
+
+                                      <label>Needs</label>
+                                      <textarea
+                                        value={card.needs || ""}
+                                        onChange={(e) => updatePullCard(card.id, "needs", e.target.value)}
+                                        placeholder="What must be complete before this starts?"
+                                      />
+
+                                      <label>Handoff</label>
+                                      <textarea
+                                        value={card.handoff || ""}
+                                        onChange={(e) => updatePullCard(card.id, "handoff", e.target.value)}
+                                        placeholder="What does complete / ready mean?"
+                                      />
+
+                                      <label>Constraints</label>
+                                      <textarea
+                                        value={card.constraints || ""}
+                                        onChange={(e) => updatePullCard(card.id, "constraints", e.target.value)}
+                                        placeholder="What could prevent this commitment?"
+                                      />
+
+                                      <div className="pull-card-linked-items">
+                                        {linkedConstraints.length > 0 && <span>{linkedConstraints.length} constraint(s)</span>}
+                                        {linkedIssues.length > 0 && <span>{linkedIssues.length} issue(s)</span>}
+                                        {linkedSubmittals.length > 0 && <span>{linkedSubmittals.length} submittal(s)</span>}
+                                      </div>
+
+                                      <div className="pull-card-actions">
+                                        <button type="button" onClick={() => openConstraintForCard(card)}>Add Constraint</button>
+                                        <button type="button" className="delete-button" onClick={() => deletePullCard(card.id)}>Delete</button>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ))}
                     </div>
                   );
-                })
-              )}
+                })}
+              </div>
             </div>
-          ))}
-        </div>
+
+            <div className="pull-plan-reference card">
+              <h2>CPM Reference Activities</h2>
+              <p>Use the schedule as a reference source. Add only the activities the team wants represented in the sprint plan.</p>
+              <div className="pull-reference-list">
+                {lookAheadActivities.slice(0, 60).map((activity) => (
+                                    <div
+                    className="pull-reference-card"
+                    key={activity.id}
+                    draggable
+                    onDragStart={() => {
+                      setDraggedReferenceActivityId(activity.id);
+                      setDraggedCardId(null);
+                    }}
+                  >
+                    <strong>{activity.id}</strong>
+                    <span>{activity.name}</span>
+                    <small>{activity.wbs} • {activity.activityCodeGroup}</small>
+                    <button type="button" onClick={() => addScheduleActivityToPullPlan(activity)}>Add to Sprint Plan</button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );
-
 }
+
 export default FourWeekLookAhead;

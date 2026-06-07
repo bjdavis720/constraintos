@@ -143,7 +143,7 @@ function SentinelHome({
     return;
   }
 
-  setActivePage("Project Dashboard");
+  setActivePage("Schedule Intelligence");
 }}
         >
           <img src={`${import.meta.env.BASE_URL}logo.png`} alt="" />
@@ -155,7 +155,7 @@ function SentinelHome({
         <button
           type="button"
           className="sentinel-module-card module-health"
-          onClick={() => setActivePage("ProjectHealthOS")}
+          onClick={() => setActivePage("Project Health Dashboard")}
         >
           <img
   src={`${import.meta.env.BASE_URL}projecthealth-logo.png`}
@@ -203,12 +203,12 @@ function SentinelHome({
     <h2>Project Registry</h2>
 
     <button
-      type="button"
-      className="secondary-button"
-      onClick={() => setActivePage("Project Setup")}
-    >
-      + Add Project
-    </button>
+  type="button"
+  className="secondary-button"
+  onClick={() => setActivePage("Project Setup")}
+>
+  + Add / Manage Projects & Teams
+</button>
   </div>
 
         <table className="data-table">
@@ -230,7 +230,7 @@ function SentinelHome({
                 }
                 onClick={() => {
                   setSelectedProject(project.id);
-                  setActivePage("Project Dashboard");
+setActivePage("Schedule Intelligence");
                 }}
               >
                 <td>{project.name}</td>

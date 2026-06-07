@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import ModuleHeader from "../components/ModuleHeader.jsx";
 
 import {
   normalizeScheduleRow,
@@ -25,6 +26,79 @@ function parseCSV(text) {
 
     return normalizeScheduleRow(row);
   });
+}
+
+function getXMLValue(parent, tagName) {
+  const node = Array.from(parent.children).find(
+    (child) => child.localName === tagName
+  );
+
+  return node?.textContent || "";
+}
+
+function formatMSProjectDate(value) {
+  if (!value) return "";
+  return String(value).split("T")[0];
+}
+
+function msProjectSlackToDays(value) {
+  if (!value) return "";
+
+  const matches = String(value).match(/PT(-?\d+)H(\d+)M/);
+
+  if (matches) {
+    const hours = Number(matches[1] || 0);
+    const minutes = Number(matches[2] || 0);
+    return Math.round((hours + minutes / 60) / 8);
+  }
+
+  const minutes = Number(value);
+
+  if (Number.isNaN(minutes)) return "";
+
+  return Math.round(minutes / 480);
+}
+
+function parseMicrosoftProjectXML(text) {
+  const parser = new DOMParser();
+  const xml = parser.parseFromString(text, "text/xml");
+
+  const parserError = xml.getElementsByTagName("parsererror");
+
+  if (parserError.length > 0) {
+    throw new Error("Invalid Microsoft Project XML file.");
+  }
+
+  const tasks = Array.from(xml.getElementsByTagNameNS("*", "Task"));
+
+  return tasks
+    .filter((task) => {
+      const name = getXMLValue(task, "Name");
+      const summary = getXMLValue(task, "Summary");
+
+      return name && summary !== "1";
+    })
+    .map((task) => {
+      const totalSlack = getXMLValue(task, "TotalSlack");
+      const critical =
+        getXMLValue(task, "Critical") === "1" ||
+        getXMLValue(task, "Critical").toLowerCase() === "true";
+      const milestone =
+        getXMLValue(task, "Milestone") === "1" ||
+        getXMLValue(task, "Milestone").toLowerCase() === "true";
+
+      return normalizeScheduleRow({
+        "Activity ID": getXMLValue(task, "ID") || getXMLValue(task, "UID"),
+        "Activity Name": getXMLValue(task, "Name"),
+        Start: formatMSProjectDate(getXMLValue(task, "Start")),
+        Finish: formatMSProjectDate(getXMLValue(task, "Finish")),
+        "Total Float": critical ? 0 : msProjectSlackToDays(totalSlack),
+        Critical: critical ? "Yes" : "No",
+        "Activity Type": milestone ? "Milestone" : "Task",
+        WBS: getXMLValue(task, "WBS") || getXMLValue(task, "OutlineNumber"),
+        "Percent Complete": getXMLValue(task, "PercentComplete"),
+      });
+    });
 }
 
 function ScheduleIntelligence({
@@ -186,20 +260,19 @@ function ScheduleIntelligence({
 
     return `Schedule Intelligence generated this issue from schedule activity data.${milestoneText}`;
   }
-function isMilestoneInNext90Days(activity) {
-  const today = new Date();
 
-  const ninetyDaysOut = new Date();
-  ninetyDaysOut.setDate(today.getDate() + 90);
+  function isMilestoneInNext90Days(activity) {
+    const today = new Date();
 
-  const finishDate = activity.finish
-    ? new Date(activity.finish)
-    : null;
+    const ninetyDaysOut = new Date();
+    ninetyDaysOut.setDate(today.getDate() + 90);
 
-  if (!finishDate || isNaN(finishDate)) return false;
+    const finishDate = activity.finish ? new Date(activity.finish) : null;
 
-  return finishDate >= today && finishDate <= ninetyDaysOut;
-}
+    if (!finishDate || isNaN(finishDate)) return false;
+
+    return finishDate >= today && finishDate <= ninetyDaysOut;
+  }
 
   function addCurrentActivityToMilestones(activity) {
     importMilestones([activity]);
@@ -214,14 +287,51 @@ function isMilestoneInNext90Days(activity) {
     ]);
   }
 
+  function deleteScheduleSnapshot(snapshotId) {
+    const updatedSnapshots = scheduleSnapshots.filter(
+      (snapshot) => snapshot.id !== snapshotId
+    );
+
+    const latestRemainingSnapshot =
+      updatedSnapshots.length > 0
+        ? updatedSnapshots[updatedSnapshots.length - 1]
+        : null;
+
+    updateCurrentProjectData({
+      scheduleSnapshots: updatedSnapshots,
+      scheduleActivities: latestRemainingSnapshot?.rows || [],
+      scheduleRelationships: latestRemainingSnapshot?.relationships || [],
+    });
+
+    if (updatedSnapshots.length >= 2) {
+      const previous = updatedSnapshots[updatedSnapshots.length - 2];
+      const current = updatedSnapshots[updatedSnapshots.length - 1];
+
+      setComparisonResults(
+        compareScheduleSnapshots(previous.rows || [], current.rows || [])
+      );
+    } else {
+      setComparisonResults(null);
+    }
+  }
+
   async function handleScheduleUpload(event) {
     const file = event.target.files?.[0];
 
     if (!file) return;
 
     try {
-      const text = await file.text();
       const fileName = file.name.toLowerCase();
+
+      if (fileName.endsWith(".mpp")) {
+        alert(
+          "Native Microsoft Project (.mpp) files are not supported yet. Export the schedule as XML and upload the .xml file."
+        );
+        event.target.value = "";
+        return;
+      }
+
+      const text = await file.text();
 
       let parsedRows = [];
       let parsedRelationships = [];
@@ -236,13 +346,23 @@ function isMilestoneInNext90Days(activity) {
           parsedRows = parsedXER?.activities || [];
           parsedRelationships = parsedXER?.relationships || [];
         }
-      } else {
+      } else if (fileName.endsWith(".csv")) {
         parsedRows = parseCSV(text);
         parsedRelationships = [];
+      } else if (fileName.endsWith(".xml")) {
+        parsedRows = parseMicrosoftProjectXML(text);
+        parsedRelationships = [];
+      } else {
+        alert(
+          "Unsupported schedule format. Please upload XER, CSV, or MS Project XML."
+        );
+        event.target.value = "";
+        return;
       }
 
       if (!Array.isArray(parsedRows) || parsedRows.length === 0) {
         alert("No schedule activities were found in this file.");
+        event.target.value = "";
         return;
       }
 
@@ -259,7 +379,7 @@ function isMilestoneInNext90Days(activity) {
         relationships: parsedRelationships.slice(0, 5000),
       };
 
-      const updatedSnapshots = [...scheduleSnapshots, newSnapshot].slice(-2);
+      const updatedSnapshots = [...scheduleSnapshots, newSnapshot];
 
       updateCurrentProjectData({
         scheduleSnapshots: updatedSnapshots,
@@ -283,24 +403,36 @@ function isMilestoneInNext90Days(activity) {
     } catch (error) {
       console.error("Schedule upload failed:", error);
       alert("Schedule upload failed. Check the browser console for details.");
+      event.target.value = "";
     }
   }
 
   return (
-    <div className="page">
-      <div className="page-header">
-        <h1>Schedule Intelligence</h1>
-        <p>Operational schedule delta analysis for {project}</p>
-      </div>
+  <div className="page">
+    <ModuleHeader
+      logo="logo.png"
+      title="ConstraintOS"
+      subtitle="Operational Constraint Intelligence"
+      description="Schedule intelligence, constraints, issues, sprint planning, and milestone management."
+    />
 
       <div className="card">
         <h3>Upload Schedule Snapshot</h3>
 
-        <input type="file" accept=".csv,.xer" onChange={handleScheduleUpload} />
+        <input
+          type="file"
+          accept=".csv,.xer,.xml,.mpp"
+          onChange={handleScheduleUpload}
+        />
 
-        <p style={{ marginTop: "10px" }}>
-          Upload CSV or XER schedule exports to compare milestone movement,
-          float erosion, and critical path changes.
+        <p>
+          Upload XER, MS Project XML, or CSV schedule exports to compare
+          milestone movement, float erosion, and critical path changes.
+        </p>
+
+        <p className="helper-text">
+          Native .mpp files are not supported yet. Export MS Project schedules as
+          XML before uploading.
         </p>
       </div>
 
@@ -326,6 +458,7 @@ function isMilestoneInNext90Days(activity) {
                 <th>Activities</th>
                 <th>Logic Links</th>
                 <th>Uploaded</th>
+                <th>Action</th>
               </tr>
             </thead>
 
@@ -336,6 +469,15 @@ function isMilestoneInNext90Days(activity) {
                   <td>{snapshot.rows?.length || 0}</td>
                   <td>{snapshot.relationships?.length || 0}</td>
                   <td>{new Date(snapshot.uploadDate).toLocaleString()}</td>
+                  <td>
+                    <button
+                      type="button"
+                      className="secondary-button small-button danger-button"
+                      onClick={() => deleteScheduleSnapshot(snapshot.id)}
+                    >
+                      Delete
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -588,25 +730,27 @@ function isMilestoneInNext90Days(activity) {
 
                   return (
                     <tr
-  key={`current-${activity.activityId}`}
-  className={
-    activityFilter === "milestones" &&
-    isMilestoneInNext90Days(activity)
-      ? "next-90-milestone"
-      : ""
-  }
->
+                      key={`current-${activity.activityId}`}
+                      className={
+                        activityFilter === "milestones" &&
+                        isMilestoneInNext90Days(activity)
+                          ? "next-90-milestone"
+                          : ""
+                      }
+                    >
                       <td>{activity.activityId}</td>
-                      <td>
-  {activity.activityName}
 
-  {activityFilter === "milestones" &&
-    isMilestoneInNext90Days(activity) && (
-      <span className="next-90-badge">
-        Next 90 Days
-      </span>
-    )}
-</td>
+                      <td>
+                        {activity.activityName}
+
+                        {activityFilter === "milestones" &&
+                          isMilestoneInNext90Days(activity) && (
+                            <span className="next-90-badge">
+                              Next 90 Days
+                            </span>
+                          )}
+                      </td>
+
                       <td>{activity.start || "-"}</td>
                       <td>{activity.finish || "-"}</td>
                       <td>{activity.totalFloat || "-"}</td>
@@ -621,9 +765,7 @@ function isMilestoneInNext90Days(activity) {
                           }
                           disabled={alreadyMilestone}
                         >
-                          {alreadyMilestone
-                            ? "Already Added"
-                            : "Add Milestone"}
+                          {alreadyMilestone ? "Already Added" : "Add Milestone"}
                         </button>
 
                         <button
