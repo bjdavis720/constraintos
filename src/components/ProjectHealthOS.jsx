@@ -763,8 +763,15 @@ function archiveHealthIssue(id) {
       <div className="data-card project-health-todos-card">
         <h2>ProjectHealthOS To-Dos</h2>
 
-        <table className="data-table">
-          <thead>
+        <table className="data-table project-health-table">
+  <colgroup>
+    <col style={{ width: "45%" }} />
+    <col style={{ width: "12%" }} />
+    <col style={{ width: "28%" }} />
+    <col style={{ width: "10%" }} />
+    <col style={{ width: "5%" }} />
+  </colgroup>
+  <thead>
             <tr>
               <th>Action</th>
               <th>Owner</th>

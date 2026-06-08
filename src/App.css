@@ -3288,3 +3288,27 @@ textarea.form-input {
   object-fit: contain;
   display: block;
 }
+.project-health-table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+.project-health-table th,
+.project-health-table td {
+  vertical-align: middle;
+}
+
+.project-health-table th:nth-child(2),
+.project-health-table td:nth-child(2),
+.project-health-table th:nth-child(4),
+.project-health-table td:nth-child(4),
+.project-health-table th:nth-child(5),
+.project-health-table td:nth-child(5) {
+  text-align: center;
+}
+
+.project-health-table textarea,
+.project-health-table input {
+  width: 100%;
+  box-sizing: border-box;
+}
