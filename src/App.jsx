@@ -976,6 +976,20 @@ setTodoForm({
   ) : (
     renderNoProjectSelected()
   ))}
+  {activePage === "Project Health Reviews" &&
+  (selectedProject ? (
+    <ProjectHealthOS
+      project={projectName}
+      projectHealthOS={projectHealthOS}
+      updateProjectHealthOS={updateProjectHealthOS}
+      issues={issues}
+      todos={todos}
+      updateCurrentProjectData={updateCurrentProjectData}
+      permissions={permissions}
+    />
+  ) : (
+    renderNoProjectSelected()
+  ))}
         
         {activePage === "Project Setup" && (
           <ProjectSetup
