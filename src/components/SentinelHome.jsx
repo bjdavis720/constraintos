@@ -146,7 +146,11 @@ function SentinelHome({
   setActivePage("Schedule Intelligence");
 }}
         >
-          <img src={`${import.meta.env.BASE_URL}logo.png`} alt="" />
+          <img
+  src={`${import.meta.env.BASE_URL}logo.png`}
+  alt="ConstraintOS"
+  className="module-card-logo"
+/>
           <span>Active Module</span>
           <h3>ConstraintOS</h3>
           <p>Schedule, milestones, constraints, issues, pull planning, and execution risk.</p>

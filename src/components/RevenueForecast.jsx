@@ -1,3 +1,4 @@
+import ModuleHeader from "./ModuleHeader.jsx";
 function RevenueForecast({
   scheduleSnapshots = [],
   revenueHistory = [],
@@ -410,10 +411,12 @@ function buildLinePath(rows, valueKey) {
 
   return (
     <div className="page">
-      <div className="page-header">
-        <h1>Revenue Forecast</h1>
-        <p>Projected monthly billings from imported XER cost-loaded activities</p>
-      </div>
+  <ModuleHeader
+    logo="revenue-logo.png"
+    title="RevenueOS"
+    subtitle="REVENUE FORECASTING & CASH FLOW INTELLIGENCE"
+    description="Revenue forecasting, billing movement, BAC analysis, and financial risk."
+  />
 
       
 <div className="data-card">

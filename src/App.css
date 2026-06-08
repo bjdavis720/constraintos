@@ -3282,3 +3282,9 @@ textarea.form-input {
   font-size: 10px;
   fill: #334155;
 }
+.module-card-logo {
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+  display: block;
+}
