@@ -18,13 +18,8 @@ function Sidebar({
   ];
 
   const projectHealthPages = [
-    "Project Health Dashboard",
-    "Project Health Reviews",
-    "Design Integration Dashboard",
-    "Long Lead Dashboard",
-    "Procurement Dashboard",
-    "Executive Attention",
-  ];
+       "Project Health Reviews",
+    ];
 
   const revenueOSPages = ["Revenue Forecast"];
 

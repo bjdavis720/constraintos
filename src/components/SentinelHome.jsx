@@ -155,7 +155,7 @@ function SentinelHome({
         <button
           type="button"
           className="sentinel-module-card module-health"
-          onClick={() => setActivePage("Project Health Dashboard")}
+          onClick={() => setActivePage("Project Health Reviews")}
         >
           <img
   src={`${import.meta.env.BASE_URL}projecthealth-logo.png`}

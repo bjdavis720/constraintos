@@ -883,99 +883,7 @@ setTodoForm({
     setActivePage={setActivePage}
   />
 )}
-{activePage === "Project Health Dashboard" &&
-  (selectedProject ? (
-    <>
-      <div className="grid">
-        <div
-          className="metric-link"
-          onClick={() =>
-            goToPageWithFilter("Schedule Milestones", "active-milestones")
-          }
-        >
-          <Metric
-            title="Active Milestones"
-            value={activeMilestones.length}
-            note={`${archivedMilestones.length} archived`}
-          />
-        </div>
 
-        <div
-          className="metric-link"
-          onClick={() =>
-            goToPageWithFilter("Schedule Milestones", "milestone-risk")
-          }
-        >
-          <Metric
-            title="Milestone Risk"
-            value={offTrackMilestones.length}
-            note={`${atRiskMilestones.length} at risk`}
-          />
-        </div>
-
-        <div
-          className="metric-link"
-          onClick={() =>
-            goToPageWithFilter("Constraint Board", "open-constraints")
-          }
-        >
-          <Metric
-            title="Open Constraints"
-            value={openConstraints.length}
-            note={`${escalatedConstraints.length} escalated`}
-          />
-        </div>
-
-        <div
-          className="metric-link"
-          onClick={() => goToPageWithFilter("Issues Board", "open-issues")}
-        >
-          <Metric
-            title="Open Issues"
-            value={openIssues.length}
-            note={`${actionAssignedIssues.length} action assigned`}
-          />
-        </div>
-
-        <div
-          className="metric-link"
-          onClick={() => goToPageWithFilter("Issues Board", "aging-issues")}
-        >
-          <Metric
-            title="Aging Issues"
-            value={agingIssues.length}
-            note="Open 7+ days"
-          />
-        </div>
-
-        <div
-          className="metric-link"
-          onClick={() =>
-            goToPageWithFilter("Executive Attention", "exec-attention")
-          }
-        >
-          <Metric
-            title="Exec Attention"
-            value={executiveAttentionTotal}
-            note="Needs leadership review"
-          />
-        </div>
-
-        <div
-          className="metric-link"
-          onClick={() => goToPageWithFilter("To-Dos", "open-todos")}
-        >
-          <Metric
-            title="Open To-Dos"
-            value={openTodos.length}
-            note={`${overdueTodos.length} overdue`}
-          />
-        </div>
-      </div>
-    </>
-  ) : (
-    renderNoProjectSelected()
-  ))}
   {activePage === "Project Health Reviews" &&
   (selectedProject ? (
     <ProjectHealthOS
@@ -1466,8 +1374,7 @@ deleteConstraint={deleteConstraint}
 
         {![
   "Project Setup",
-  "Project Health Dashboard",
-  "Executive Dashboard",
+   "Executive Dashboard",
   "Schedule Intelligence",
   "TIA Intelligence",
   "Revenue Forecast",
