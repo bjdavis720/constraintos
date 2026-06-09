@@ -22,20 +22,25 @@ function Sidebar({
     ];
 
   const revenueOSPages = ["Revenue Forecast"];
+  const riskIntegratorOSPages = ["RiskIntegratorOS"];
 
   const inSentinelHome = activePage === "SentinelOS Home";
   const inProjectSetup = activePage === "Project Setup";
   const inConstraintOS = constraintOSPages.includes(activePage);
   const inProjectHealthOS = projectHealthPages.includes(activePage);
   const inRevenueOS = revenueOSPages.includes(activePage);
+  const inRiskIntegratorOS = riskIntegratorOSPages.includes(activePage);
+  
 
-  const activeSections = inConstraintOS
-    ? [{ label: "Workflow", items: constraintOSPages }]
-    : inProjectHealthOS
-    ? [{ label: "Health", items: projectHealthPages }]
-    : inRevenueOS
-    ? [{ label: "RevenueOS", items: revenueOSPages }]
-    : [];
+ const activeSections = inConstraintOS
+  ? [{ label: "Workflow", items: constraintOSPages }]
+  : inProjectHealthOS
+  ? [{ label: "Health", items: projectHealthPages }]
+  : inRevenueOS
+  ? [{ label: "RevenueOS", items: revenueOSPages }]
+  : inRiskIntegratorOS
+  ? [{ label: "RiskIntegratorOS", items: riskIntegratorOSPages }]
+  : [];
 
   return (
     <aside className="sidebar">

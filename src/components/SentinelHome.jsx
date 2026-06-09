@@ -188,19 +188,22 @@ function SentinelHome({
         </button>
 
         <button
-          type="button"
-          className="sentinel-module-card module-risk"
-          onClick={() => openModule("RiskIntegratorOS")}
-        >
-          <img
-  src={`${import.meta.env.BASE_URL}riskintegrator-logo.png`}
-  alt="RiskIntegratorOS"
-/>
-          <span>Coming Soon</span>
-          <h3>RiskIntegratorOS</h3>
-          <p>Risk register, risk playbooks, escalation logic, and accountability governance.</p>
-        </button>
-      </div>
+  type="button"
+  className="sentinel-module-card module-risk"
+  onClick={() => openModule("RiskIntegratorOS")}
+>
+  <img
+    src={`${import.meta.env.BASE_URL}riskintegrator-logo.png`}
+    alt="RiskIntegratorOS"
+  />
+  <span>Active Module</span>
+  <h3>RiskIntegratorOS</h3>
+  <p>
+    Risk register, risk playbooks, escalation logic, and accountability governance.
+  </p>
+</button>
+
+</div>
 
       <div className="data-card sentinel-project-card">
   <div className="section-header-row">

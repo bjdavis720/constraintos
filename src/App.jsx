@@ -18,6 +18,7 @@ import SubmittalReadiness from "./components/SubmittalReadiness.jsx";
 import ProjectHealthOS from "./components/ProjectHealthOS.jsx";
 import ModuleHeader from "./components/ModuleHeader.jsx";
 import LongLeadItemBoard from "./pages/LongLeadItemBoard.jsx";
+import RiskIntegratorOS from "./components/RiskIntegratorOS";
 
 import {
   getAgeInDays,
@@ -44,12 +45,16 @@ function createEmptyProjectData() {
 workZones: [],
 ppcHistory: [],
 
-    projectHealthOS: {
-      reviewItems: [],
-      issues: [],
-      todos: [],
-      reviewHistory: [],
-    },
+    riskPlaybook: [],
+riskSources: [],
+riskAssessments: [],
+
+projectHealthOS: {
+  reviewItems: [],
+  issues: [],
+  todos: [],
+  reviewHistory: [],
+},
   };
 }
 
@@ -123,6 +128,7 @@ const [editingTeamMemberId, setEditingTeamMemberId] = useState(null);
 const constraints = currentData.constraints || [];
 const longLeadItems = currentData.longLeadItems || [];
 const issues = currentData.issues || [];
+const riskPlaybook = currentData.riskPlaybook || [];
 const todos = currentData.todos || [];
 const teamMembers = currentData.teamMembers || [];
 const submittals = currentData.submittals || [];
@@ -324,7 +330,11 @@ setActivePage("SentinelOS Home");
       status: "Active",
     });
   }
-  
+  function setRiskPlaybook(nextRiskPlaybook) {
+  updateCurrentProjectData({
+    riskPlaybook: nextRiskPlaybook,
+  });
+}
   function archiveProject(projectId) {
     setProjects((prev) =>
       prev.map((project) =>
@@ -1295,6 +1305,13 @@ setPpcHistory={(nextPpcHistory) =>
   ) : (
     renderNoProjectSelected()
   ))}
+  {activePage === "RiskIntegratorOS" && (
+  <RiskIntegratorOS
+    selectedProject={selectedProject}
+    riskPlaybook={riskPlaybook}
+    setRiskPlaybook={setRiskPlaybook}
+  />
+)}
 
         {activePage === "Constraint Board" &&
           (selectedProject ? (
@@ -1378,6 +1395,7 @@ deleteConstraint={deleteConstraint}
   "Schedule Intelligence",
   "TIA Intelligence",
   "Revenue Forecast",
+  "RiskIntegratorOS",
   "4-Week Look Ahead and Sprint Plan",
   "Submittal Readiness",
   "Schedule Milestones",
