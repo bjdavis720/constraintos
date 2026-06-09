@@ -48,6 +48,7 @@ ppcHistory: [],
     riskPlaybook: [],
 riskSources: [],
 riskAssessments: [],
+suggestedRisks: [],
 
 projectHealthOS: {
   reviewItems: [],
@@ -129,6 +130,8 @@ const constraints = currentData.constraints || [];
 const longLeadItems = currentData.longLeadItems || [];
 const issues = currentData.issues || [];
 const riskPlaybook = currentData.riskPlaybook || [];
+const riskSources = currentData.riskSources || [];
+const suggestedRisks = currentData.suggestedRisks || [];
 const todos = currentData.todos || [];
 const teamMembers = currentData.teamMembers || [];
 const submittals = currentData.submittals || [];
@@ -333,6 +336,16 @@ setActivePage("SentinelOS Home");
   function setRiskPlaybook(nextRiskPlaybook) {
   updateCurrentProjectData({
     riskPlaybook: nextRiskPlaybook,
+  });
+}
+function setRiskSources(nextRiskSources) {
+  updateCurrentProjectData({
+    riskSources: nextRiskSources,
+  });
+}
+function setSuggestedRisks(nextSuggestedRisks) {
+  updateCurrentProjectData({
+    suggestedRisks: nextSuggestedRisks,
   });
 }
   function archiveProject(projectId) {
@@ -1307,10 +1320,16 @@ setPpcHistory={(nextPpcHistory) =>
   ))}
   {activePage === "RiskIntegratorOS" && (
   <RiskIntegratorOS
-    selectedProject={selectedProject}
-    riskPlaybook={riskPlaybook}
-    setRiskPlaybook={setRiskPlaybook}
-  />
+  selectedProject={selectedProject}
+  riskPlaybook={riskPlaybook}
+  setRiskPlaybook={setRiskPlaybook}
+  riskSources={riskSources}
+  setRiskSources={setRiskSources}
+  suggestedRisks={suggestedRisks}
+  setSuggestedRisks={setSuggestedRisks}
+  constraints={constraints}
+  projectHealthOS={projectHealthOS}
+/>
 )}
 
         {activePage === "Constraint Board" &&
