@@ -44,6 +44,8 @@ function RiskIntegratorOS({
   setSuggestedRisks,
   constraints = [],
 projectHealthOS = {},
+scheduleSnapshots = [],
+revenueHistory = [],
 }) {
   const [riskForm, setRiskForm] = useState({
     title: "",
@@ -134,15 +136,20 @@ projectHealthOS = {},
     });
   }
 
-  if (escalatedConstraints.length > 0) {
-    generatedRisks.push({
-      id: crypto.randomUUID(),
-      risk: `${escalatedConstraints.length} escalated constraint(s) require executive attention`,
-      category: "Executive",
-      source: "ConstraintOS",
-      confidence: "High",
-    });
-  }
+  escalatedConstraints.forEach((constraint) => {
+  constraintRisks.push({
+    id: crypto.randomUUID(),
+    risk: constraint.title || constraint.constraint,
+    category: "Executive",
+    source: "ConstraintOS",
+    confidence: "High",
+    probability: 3,
+    impact: 4,
+    owner: constraint.owner || "Unassigned",
+    trigger: `Constraint remains ${constraint.status}`,
+    mitigation: `Review constraint ownership and resolution plan`,
+  });
+});
 
   if (openConstraints.length > 20) {
     generatedRisks.push({
@@ -186,7 +193,192 @@ const projectHealthRisks = offTrackHealthItems.map((item) => {
   };
 });
 }
+function generateContractClauseRisks() {
+  const contractSources = riskSources.filter(
+    (source) => source.type === "Contract"
+  );
+
+  const rules = [
+    {
+      risk: "Contractual notice compliance risk",
+      category: "Contract",
+      confidence: "High",
+      probability: 4,
+      impact: 5,
+      keywords: ["notice", "written notice", "days notice"],
+    },
+    {
+      risk: "Liquidated damages exposure",
+      category: "Financial",
+      confidence: "High",
+      probability: 4,
+      impact: 5,
+      keywords: ["liquidated damages", "ld", "per day"],
+    },
+    {
+      risk: "Owner-furnished equipment dependency",
+      category: "Schedule",
+      confidence: "Medium",
+      probability: 3,
+      impact: 4,
+      keywords: ["owner furnished", "government furnished", "ofe", "gfe"],
+    },
+    {
+      risk: "Insurance compliance risk",
+      category: "Compliance",
+      confidence: "Medium",
+      probability: 3,
+      impact: 4,
+      keywords: ["insurance", "builder's risk", "professional liability", "cyber liability"],
+    },
+    {
+      risk: "Federal compliance exposure",
+      category: "Compliance",
+      confidence: "High",
+      probability: 4,
+      impact: 5,
+      keywords: ["cui", "cmmc", "cybersecurity", "far", "dfars"],
+    },
+    {
+      risk: "Labor compliance or availability risk",
+      category: "Staffing",
+      confidence: "High",
+      probability: 4,
+      impact: 4,
+      keywords: ["pla", "project labor agreement", "tero", "davis bacon", "davis-bacon"],
+    },
+  ];
+
+  const contractRisks = [];
+
+  contractSources.forEach((source) => {
+    const text = String(source.extractedText || "").toLowerCase();
+
+    if (riskSources.some((source) => source.type === "Contract")) {
+  contractRisks.push(
+    {
+      id: crypto.randomUUID(),
+      risk: "Notice provision requirements detected",
+      category: "Contract",
+      source: "Contract Intelligence",
+      confidence: "High",
+      probability: 3,
+      impact: 4,
+      owner: "Project Executive",
+    },
+    {
+      id: crypto.randomUUID(),
+      risk: "Liquidated damages exposure detected",
+      category: "Financial",
+      source: "Contract Intelligence",
+      confidence: "High",
+      probability: 4,
+      impact: 5,
+      owner: "Project Executive",
+    },
+    {
+      id: crypto.randomUUID(),
+      risk: "Cyber/CUI compliance requirements detected",
+      category: "Compliance",
+      source: "Contract Intelligence",
+      confidence: "High",
+      probability: 4,
+      impact: 5,
+      owner: "IT / Compliance",
+    },
+    {
+      id: crypto.randomUUID(),
+      risk: "Davis-Bacon labor compliance requirements detected",
+      category: "Labor",
+      source: "Contract Intelligence",
+      confidence: "High",
+      probability: 3,
+      impact: 4,
+      owner: "Project Manager",
+    }
+  );
+}
+
+    rules.forEach((rule) => {
+      const matched = rule.keywords.some((keyword) =>
+        text.includes(keyword.toLowerCase())
+      );
+
+      if (matched) {
+        contractRisks.push({
+          id: crypto.randomUUID(),
+          risk: rule.risk,
+          category: rule.category,
+          source: "Contract Intelligence",
+          confidence: rule.confidence,
+          probability: rule.probability,
+          impact: rule.impact,
+          owner: "Project Executive",
+        });
+      }
+    });
+  });
+
+  return contractRisks;
+}
+function getSnapshotActivities(snapshot) {
+  return (
+    snapshot?.activities ||
+    snapshot?.scheduleActivities ||
+    snapshot?.rows ||
+    snapshot?.data ||
+    []
+  );
+}
+
+function getForecastRevenue(snapshot) {
+  const activities = getSnapshotActivities(snapshot);
+
+  return activities.reduce((total, activity) => {
+    return total + Number(activity.budgetAtCompletion || 0);
+  }, 0);
+}
+function getMonthsBetween(startDate, finishDate) {
+  const start = new Date(startDate);
+  const finish = new Date(finishDate);
+
+  if (Number.isNaN(start.getTime()) || Number.isNaN(finish.getTime())) {
+    return [];
+  }
+
+  const months = [];
+  const current = new Date(start.getFullYear(), start.getMonth(), 1);
+  const last = new Date(finish.getFullYear(), finish.getMonth(), 1);
+
+  while (current <= last) {
+    months.push(current.toISOString().slice(0, 7));
+    current.setMonth(current.getMonth() + 1);
+  }
+
+  return months;
+}
+
+function buildRiskMonthlyForecast(snapshot) {
+  const activities = getSnapshotActivities(snapshot);
+  const monthlyTotals = {};
+
+  activities.forEach((activity) => {
+    const budget = Number(activity.budgetAtCompletion || 0);
+    const months = getMonthsBetween(activity.start, activity.finish);
+
+    if (budget === 0 || months.length === 0) return;
+
+    const monthlyValue = budget / months.length;
+
+    months.forEach((monthKey) => {
+      monthlyTotals[monthKey] = (monthlyTotals[monthKey] || 0) + monthlyValue;
+    });
+  });
+
+  return { monthlyTotals };
+}
 function loadDemoSuggestedRisks() {
+  
   const demoRisks = [
     {
       id: crypto.randomUUID(),
@@ -220,60 +412,177 @@ function loadDemoSuggestedRisks() {
 
   const constraintRisks = [];
 
-  if (escalatedConstraints.length > 0) {
-    constraintRisks.push({
+  escalatedConstraints.forEach((constraint) => {
+  constraintRisks.push({
+    id: crypto.randomUUID(),
+    risk: constraint.description || "Escalated constraint requires executive attention",
+    category: "Executive",
+    source: "ConstraintOS",
+    confidence: "High",
+    probability: 3,
+    impact: 4,
+    owner: constraint.owner || "Project Executive",
+    mitigation: "Review constraint ownership, confirm required-by date, define recovery path, and escalate unresolved blockers.",
+    trigger: `Constraint status is ${constraint.status || "Escalated"}. Required by: ${
+      constraint.requiredBy || "not assigned"
+    }. Linked milestone: ${constraint.milestone || "Unassigned"}.`,
+  });
+});
+const agingConstraintRisks = [];
+
+constraints.forEach((constraint) => {
+  const age = getConstraintAge(constraint);
+
+  if (
+    !constraint.archived &&
+    constraint.status !== "Closed" &&
+    age >= 30
+  ) {
+    agingConstraintRisks.push({
       id: crypto.randomUUID(),
-      risk: `${escalatedConstraints.length} escalated constraint(s) require executive attention`,
-      category: "Executive",
+      risk: `Aging Constraint: ${constraint.description}`,
+      category: "Execution",
       source: "ConstraintOS",
       confidence: "High",
-      probability: 3,
+      probability: 4,
       impact: 4,
-      owner: "Project Executive",
+      owner: constraint.owner || "Project Executive",
+      mitigation:
+        "Review ownership, escalation path, and recovery plan.",
+      trigger: `Constraint open for ${age} days.`,
     });
   }
+  
+});
 
   const healthReviewItems = Array.isArray(projectHealthOS?.reviewItems)
     ? projectHealthOS.reviewItems
     : [];
 
   const projectHealthRisks = healthReviewItems
-    .filter((item) => item?.status === "Red")
-    .map((item) => ({
+  .filter((item) => item?.status === "Red" || item?.status === "Yellow")
+  .map((item) => {
+    const isOffTrack = item.status === "Red";
+
+    return {
       id: crypto.randomUUID(),
       risk: `${item?.heading || "Project Health"}: ${
-        item?.item || item?.reviewItem || item?.title || "Off Track item"
-      } is Off Track`,
-      category: "Executive",
+        item?.item || item?.reviewItem || item?.title || "Review item"
+      } is ${isOffTrack ? "Off Track" : "At Risk"}`,
+      category: isOffTrack ? "Executive" : "Management",
       source: "ProjectHealthOS",
-      confidence: "High",
-      probability: 3,
-      impact: 4,
+      confidence: isOffTrack ? "High" : "Medium",
+      probability: isOffTrack ? 4 : 3,
+      impact: isOffTrack ? 4 : 3,
       owner: "Project Executive",
-    }));
+      mitigation: isOffTrack
+        ? "Review during project health meeting, assign corrective action, and escalate until item improves."
+        : "Monitor during project health meeting and assign preventive action before item becomes Off Track.",
+      trigger: isOffTrack
+        ? "ProjectHealthOS review item is Off Track."
+        : "ProjectHealthOS review item is At Risk.",
+    };
+  });
+  
 
-  const generatedRisks = [
-    ...demoRisks,
-    ...constraintRisks,
-    ...projectHealthRisks,
-  ];
+  const contractRisks = generateContractClauseRisks();
+  const revenueRisks = [];
 
-  const existingKeys = new Set(
-    [
-      ...suggestedRisks.map(
-        (risk) => `${risk.risk}-${risk.category}-${risk.source}`
-      ),
-      ...riskPlaybook.map(
-        (risk) => `${risk.title}-${risk.category}-${risk.sourceType}`
-      ),
-    ]
-  );
+if (scheduleSnapshots.length >= 2) {
+  const previousSnapshot = scheduleSnapshots[scheduleSnapshots.length - 2];
+  const latestSnapshot = scheduleSnapshots[scheduleSnapshots.length - 1];
 
-  const newUniqueRisks = generatedRisks.filter(
-    (risk) => !existingKeys.has(`${risk.risk}-${risk.category}-${risk.source}`)
-  );
+  const previousForecast = buildRiskMonthlyForecast(previousSnapshot);
+  const currentForecast = buildRiskMonthlyForecast(latestSnapshot);
 
-  setSuggestedRisks([...suggestedRisks, ...newUniqueRisks]);
+  const allMonthKeys = Array.from(
+    new Set([
+      ...Object.keys(previousForecast.monthlyTotals),
+      ...Object.keys(currentForecast.monthlyTotals),
+    ])
+  ).sort();
+
+  let previousCumulative = 0;
+  let currentCumulative = 0;
+  let worstCumulativeDelta = 0;
+  let worstMonth = "";
+
+  allMonthKeys.forEach((monthKey) => {
+    const previousMonthly =
+      previousForecast.monthlyTotals[monthKey] ||
+      currentForecast.monthlyTotals[monthKey] ||
+      0;
+
+    const currentMonthly =
+      currentForecast.monthlyTotals[monthKey] ||
+      previousForecast.monthlyTotals[monthKey] ||
+      0;
+
+    previousCumulative += previousMonthly;
+    currentCumulative += currentMonthly;
+
+    const cumulativeDelta = currentCumulative - previousCumulative;
+
+    if (cumulativeDelta < worstCumulativeDelta) {
+      worstCumulativeDelta = cumulativeDelta;
+      worstMonth = monthKey;
+    }
+  });
+
+  if (worstCumulativeDelta < 0) {
+    revenueRisks.push({
+      id: crypto.randomUUID(),
+      risk: `Revenue forecast timing deterioration detected: ${Math.abs(
+        worstCumulativeDelta
+      ).toLocaleString("en-US", {
+        style: "currency",
+        currency: "USD",
+        maximumFractionDigits: 0,
+      })} negative cumulative movement`,
+      category: "Financial",
+      source: "RevenueOS",
+      confidence: "High",
+      probability: 4,
+      impact: 5,
+      owner: "Project Executive",
+      mitigation:
+        "Review forecast timing shifts, billing assumptions, and recovery plan for delayed revenue recognition.",
+      trigger: `RevenueOS detected negative cumulative movement in ${worstMonth || "the forecast period"}.`,
+    });
+  }
+}
+
+const generatedRisks = [
+  ...demoRisks,
+  ...constraintRisks,
+  ...agingConstraintRisks,
+  ...projectHealthRisks,
+  ...revenueRisks,
+  ...contractRisks,
+];
+const uniqueGeneratedRisks = generatedRisks.filter(
+  (risk, index, self) =>
+    index ===
+    self.findIndex(
+      (item) =>
+        item.risk === risk.risk &&
+        item.category === risk.category &&
+        item.source === risk.source
+    )
+);
+
+const acceptedRiskKeys = new Set(
+  riskPlaybook.map(
+    (risk) => `${risk.title}-${risk.category}-${risk.sourceType}`
+  )
+);
+
+const newSuggestedRisks = uniqueGeneratedRisks.filter(
+  (risk) =>
+    !acceptedRiskKeys.has(`${risk.risk}-${risk.category}-${risk.source}`)
+);
+
+setSuggestedRisks(newSuggestedRisks);
 }
   function addRisk(e) {
     e.preventDefault();
@@ -297,10 +606,9 @@ function loadDemoSuggestedRisks() {
       category: "Schedule",
       source: "Manual Entry",
       sourceType: "Manual",
-      probability: risk.probability || 3,
-impact: risk.impact || 3,
-score: (risk.probability || 3) * (risk.impact || 3),
-owner: risk.owner || "Project Executive",
+      probability: 3,
+impact: 3,
+owner: "",
       mitigation: "",
       trigger: "",
       trend: "Stable",
@@ -337,19 +645,156 @@ owner: risk.owner || "Project Executive",
   const file = e.target.files?.[0];
   if (!file) return;
 
-  const newSource = {
+  const fileName = file.name || "";
+  const lowerName = fileName.toLowerCase();
+  const canReadAsText =
+    lowerName.endsWith(".txt") ||
+    lowerName.endsWith(".csv") ||
+    lowerName.endsWith(".md");
+
+  const baseSource = {
     id: `source-${Date.now()}`,
-    name: file.name,
+    name: fileName,
     type: sourceType,
     uploadedAt: new Date().toLocaleDateString(),
     risksGenerated: 0,
+    extractedText: "",
+    analysisStatus: canReadAsText
+      ? "Text ready"
+      : "Uploaded - text extraction pending",
   };
 
-  setRiskSources([...riskSources, newSource]);
+  if (!canReadAsText) {
+    setRiskSources([...riskSources, baseSource]);
+    e.target.value = "";
+    return;
+  }
 
+  const reader = new FileReader();
+
+  reader.onload = (event) => {
+    const extractedText = String(event.target.result || "");
+
+    setRiskSources([
+      ...riskSources,
+      {
+        ...baseSource,
+        extractedText,
+      },
+    ]);
+  };
+
+  reader.readAsText(file);
   e.target.value = "";
 }
+function getDefaultMitigation(riskTitle, category, source) {
+  const title = String(riskTitle || "").toLowerCase();
 
+  if (title.includes("notice")) {
+    return "Establish notice tracking log, assign responsibility for contractual notices, and review notice requirements during weekly project controls meeting.";
+  }
+
+  if (title.includes("liquidated damages")) {
+    return "Validate substantial completion milestones, review schedule contingency, monitor critical path movement, and escalate recovery plan if float deteriorates.";
+  }
+
+  if (title.includes("cyber") || title.includes("cui")) {
+    return "Confirm CUI handling requirements, validate cybersecurity controls, assign compliance owner, and verify project team access procedures.";
+  }
+
+  if (title.includes("davis-bacon") || title.includes("labor")) {
+    return "Review certified payroll requirements, confirm subcontractor wage compliance, and establish recurring payroll compliance checks.";
+  }
+
+  if (title.includes("owner-furnished")) {
+    return "Identify owner-furnished dependencies, confirm delivery dates, add required handoff dates to the schedule, and escalate missing commitments.";
+  }
+
+  if (source === "ProjectHealthOS") {
+    return "Review during monthly project health meeting, assign accountable owner, document corrective action, and track status until item improves.";
+  }
+
+  if (source === "ConstraintOS") {
+    return "Review constraint ownership, confirm required-by date, escalate blocker as needed, and convert to issue or action item if unresolved.";
+  }
+
+  return "Assign accountable owner, define mitigation actions, monitor trend, and escalate if risk worsens.";
+}
+
+function getDefaultTrigger(riskTitle, category, source) {
+  const title = String(riskTitle || "").toLowerCase();
+
+  if (title.includes("notice")) {
+    return "Potential claim, change, delay, or event requiring contractual notice.";
+  }
+
+  if (title.includes("liquidated damages")) {
+    return "Critical milestone or substantial completion date begins to slip.";
+  }
+
+  if (title.includes("cyber") || title.includes("cui")) {
+    return "Project receives, stores, transmits, or controls CUI or cybersecurity-sensitive information.";
+  }
+
+  if (title.includes("davis-bacon") || title.includes("labor")) {
+    return "Certified payroll, wage determination, or labor compliance requirement applies.";
+  }
+
+  if (title.includes("owner-furnished")) {
+    return "Owner-furnished item is required to maintain project schedule or trade flow.";
+  }
+
+  if (source === "ProjectHealthOS") {
+    return "Project health review item remains Off Track or worsens.";
+  }
+
+  if (source === "ConstraintOS") {
+    return "Constraint remains open, escalated, or unresolved beyond required date.";
+  }
+
+  return "Risk condition emerges or begins affecting project performance.";
+}
+function calculateRiskTrend(risk) {
+  const title = String(risk.title || "").toLowerCase();
+
+  if (title.includes("constraint") || risk.sourceType === "ConstraintOS") {
+    const escalatedCount = constraints.filter(
+      (constraint) => constraint.status === "Escalated"
+    ).length;
+
+    return escalatedCount > 0 ? "Worsening" : risk.trend || "Stable";
+  }
+
+  if (risk.sourceType === "ProjectHealthOS") {
+    const healthReviewItems = Array.isArray(projectHealthOS?.reviewItems)
+      ? projectHealthOS.reviewItems
+      : [];
+
+    const offTrackItems = healthReviewItems.filter(
+      (item) => item.status === "Red"
+    );
+
+    return offTrackItems.length > 0 ? "Worsening" : risk.trend || "Stable";
+  }
+
+  return risk.trend || "Stable";
+}
+function getConstraintAge(constraint) {
+  const createdDate = constraint.createdAt
+    ? new Date(constraint.createdAt)
+    : constraint.requiredBy
+    ? new Date(constraint.requiredBy)
+    : null;
+
+  if (!createdDate || Number.isNaN(createdDate.getTime())) return 0;
+
+  const today = new Date();
+
+  return Math.max(
+    0,
+    Math.ceil((today - createdDate) / (1000 * 60 * 60 * 24))
+  );
+}
   return (
     <div className="page">
       <ModuleHeader
@@ -507,23 +952,25 @@ owner: risk.owner || "Project Executive",
               <thead>
                 <tr>
                   <th>Source</th>
-                  <th>Type</th>
-                  <th>Uploaded</th>
-                  <th>Risks Generated</th>
+<th>Type</th>
+<th>Uploaded</th>
+<th>Analysis Status</th>
+<th>Risks Generated</th>
                 </tr>
               </thead>
               <tbody>
   {riskSources.length === 0 ? (
     <tr>
-      <td colSpan="4">No risk sources uploaded yet.</td>
+      <td colSpan="5">No risk sources uploaded yet.</td>
     </tr>
   ) : (
     riskSources.map((source) => (
       <tr key={source.id}>
         <td>{source.name}</td>
-        <td>{source.type}</td>
-        <td>{source.uploadedAt}</td>
-        <td>{source.risksGenerated}</td>
+<td>{source.type}</td>
+<td>{source.uploadedAt}</td>
+<td>{source.analysisStatus || "Uploaded"}</td>
+<td>{source.risksGenerated}</td>
       </tr>
     ))
   )}
@@ -601,20 +1048,26 @@ owner: risk.owner || "Project Executive",
                 setRiskPlaybook([
   ...riskPlaybook,
                   {
-                    id: crypto.randomUUID(),
-                    title: risk.risk,
-                    category: risk.category,
-                    sourceType: risk.source,
-                    source: risk.source,
-                    probability: 3,
-                    impact: 3,
-                    score: 9,
-                    owner: "",
-                    status: "Open",
-                    trend: "Stable",
-                    mitigation: "",
-                    trigger: "",
-                  },
+  id: crypto.randomUUID(),
+  title: risk.risk,
+  category: risk.category,
+  sourceType: risk.source,
+  source: risk.source,
+  probability: risk.probability || 3,
+  impact: risk.impact || 3,
+  score: (risk.probability || 3) * (risk.impact || 3),
+  owner: risk.owner || "Project Executive",
+  status: "Open",
+  trend: "Stable",
+  mitigation:
+    risk.mitigation ||
+    getDefaultMitigation(risk.risk, risk.category, risk.source),
+  trigger:
+    risk.trigger ||
+    getDefaultTrigger(risk.risk, risk.category, risk.source),
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+},
                 ]);
 
                 setSuggestedRisks(
@@ -929,7 +1382,7 @@ owner: risk.owner || "Project Executive",
 
                       <td>
                         <select
-                          value={risk.trend || "Stable"}
+                          value={calculateRiskTrend(risk)}
                           onChange={(e) =>
                             updateRisk(risk.id, "trend", e.target.value)
                           }

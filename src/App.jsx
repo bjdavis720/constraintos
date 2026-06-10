@@ -1329,6 +1329,9 @@ setPpcHistory={(nextPpcHistory) =>
   setSuggestedRisks={setSuggestedRisks}
   constraints={constraints}
   projectHealthOS={projectHealthOS}
+  scheduleSnapshots={scheduleSnapshots}
+revenueHistory={revenueHistory}
+  
 />
 )}
 
