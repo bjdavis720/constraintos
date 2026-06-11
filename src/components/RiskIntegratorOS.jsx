@@ -46,6 +46,8 @@ function RiskIntegratorOS({
 projectHealthOS = {},
 scheduleSnapshots = [],
 revenueHistory = [],
+teamMembers = [],
+milestones = [],
 }) {
   const [riskForm, setRiskForm] = useState({
     title: "",
@@ -59,7 +61,9 @@ revenueHistory = [],
     trigger: "",
     trend: "Stable",
     status: "Open",
+    linkedMilestone: "",
   });
+  const [historyRiskFilter, setHistoryRiskFilter] = useState("All Risks");
 
   const activeRisks = riskPlaybook.filter(
     (risk) => risk.status !== "Closed" && risk.status !== "Retired"
@@ -74,6 +78,26 @@ revenueHistory = [],
   );
   const risksWithoutOwners = activeRisks.filter((risk) => !risk.owner);
   const worseningRisks = activeRisks.filter((risk) => risk.trend === "Worsening");
+  const executiveAlerts = getExecutiveAlerts();
+  
+  const historyRows = riskPlaybook
+  .filter(
+    (risk) =>
+      historyRiskFilter === "All Risks" || risk.title === historyRiskFilter
+  )
+  .flatMap((risk) =>
+    (risk.history || []).map((entry) => ({
+      risk: risk.title,
+      date: entry.date,
+      action: entry.action,
+    }))
+  );
+
+historyRows.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+historyRows.sort(
+  (a, b) => new Date(b.date) - new Date(a.date)
+);
 
   const topExecutiveRisks = [...activeRisks]
     .sort((a, b) => b.score - a.score)
@@ -92,6 +116,7 @@ revenueHistory = [],
     if (score >= 6) return "status-pill warning";
     return "status-pill on-track";
   }
+  
 
   function handleFormChange(e) {
     const { name, value } = e.target;
@@ -377,30 +402,69 @@ function buildRiskMonthlyForecast(snapshot) {
 
   return { monthlyTotals };
 }
+function getDaysBetweenDates(startDate, endDate) {
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    return 0;
+  }
+
+  return Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+}
+
+function getLinkedMilestoneSlipDays(risk) {
+  if (!risk.linkedMilestone || !risk.baselineMilestoneDate) return 0;
+
+  const currentMilestone = milestones.find(
+    (milestone) => milestone.name === risk.linkedMilestone
+  );
+
+  if (!currentMilestone?.due) return 0;
+
+  return getDaysBetweenDates(
+    risk.baselineMilestoneDate,
+    currentMilestone.due
+  );
+}
+
+function getRiskRecommendation(risk) {
+  const slipDays = getLinkedMilestoneSlipDays(risk);
+
+  const isContractRisk =
+  risk.source === "Contract Intelligence";
+
+if (isContractRisk && slipDays > 0) {
+  return "Contract Exposure Review";
+}
+
+if (slipDays >= 31) return "Escalate Risk";
+if (slipDays >= 15) return "Increase Probability";
+if (slipDays > 0) return "Monitor";
+  return "No Action";
+}
+function getExecutiveAlerts() {
+  return riskPlaybook
+    .map((risk) => {
+      const slipDays = getLinkedMilestoneSlipDays(risk);
+      const recommendation = getRiskRecommendation(risk);
+
+      if (slipDays <= 0) return null;
+
+      return {
+  id: risk.id,
+  risk: risk.title,
+  linkedMilestone: risk.linkedMilestone,
+  slipDays,
+  score: risk.score,
+  recommendation,
+  alertMessage: `${risk.linkedMilestone} slipped ${slipDays} days`,
+};
+    })
+    .filter(Boolean);
+}
 function loadDemoSuggestedRisks() {
   
-  const demoRisks = [
-    {
-      id: crypto.randomUUID(),
-      risk: "Owner-furnished equipment delivery delay",
-      category: "Schedule",
-      source: "Contract",
-      confidence: "High",
-      probability: 3,
-      impact: 4,
-      owner: "Project Executive",
-    },
-    {
-      id: crypto.randomUUID(),
-      risk: "CUI compliance requirements not fully defined",
-      category: "Compliance",
-      source: "Contract",
-      confidence: "High",
-      probability: 4,
-      impact: 5,
-      owner: "Project Executive",
-    },
-  ];
 
   const openConstraints = constraints.filter(
     (constraint) => constraint.status !== "Closed" && !constraint.archived
@@ -553,7 +617,6 @@ if (scheduleSnapshots.length >= 2) {
 }
 
 const generatedRisks = [
-  ...demoRisks,
   ...constraintRisks,
   ...agingConstraintRisks,
   ...projectHealthRisks,
@@ -602,18 +665,19 @@ setSuggestedRisks(newSuggestedRisks);
     setRiskPlaybook([...riskPlaybook, newRisk]);
 
     setRiskForm({
-      title: "",
-      category: "Schedule",
-      source: "Manual Entry",
-      sourceType: "Manual",
-      probability: 3,
-impact: 3,
-owner: "",
-      mitigation: "",
-      trigger: "",
-      trend: "Stable",
-      status: "Open",
-    });
+  title: "",
+  category: "Schedule",
+  source: "Manual Entry",
+  sourceType: "Manual",
+  probability: 3,
+  impact: 3,
+  owner: "",
+  mitigation: "",
+  trigger: "",
+  trend: "Stable",
+  status: "Open",
+  linkedMilestone: "",
+});
   }
 
   function updateRisk(id, field, value) {
@@ -628,10 +692,47 @@ owner: "",
             : value,
         updatedAt: new Date().toISOString(),
       };
+      const history = [...(risk.history || [])];
+      if (field === "linkedMilestone") {
+  const linkedMilestone = milestones.find(
+    (milestone) => milestone.name === value
+  );
 
-      updatedRisk.score = updatedRisk.probability * updatedRisk.impact;
+  updatedRisk.baselineMilestoneDate =
+    linkedMilestone?.due || risk.baselineMilestoneDate || "";
 
-      return updatedRisk;
+  history.push({
+    date: new Date().toISOString(),
+    action: `Linked Milestone Changed: ${
+      risk.linkedMilestone || "Not Linked"
+    } → ${value || "Not Linked"}`,
+  });
+}
+
+if (field === "status") {
+  history.push({
+    date: new Date().toISOString(),
+    action: `Status Changed: ${risk.status} → ${value}`,
+  });
+}
+
+if (field === "trend") {
+  history.push({
+    date: new Date().toISOString(),
+    action: `Trend Changed: ${risk.trend} → ${value}`,
+  });
+}
+if (field === "owner") {
+  history.push({
+    date: new Date().toISOString(),
+    action: `Owner Changed: ${risk.owner || "Unassigned"} → ${value}`,
+  });
+}
+
+updatedRisk.history = history;
+updatedRisk.score = updatedRisk.probability * updatedRisk.impact;
+
+return updatedRisk;
     });
 
     setRiskPlaybook(nextRisks);
@@ -717,6 +818,36 @@ function getDefaultMitigation(riskTitle, category, source) {
   if (source === "ConstraintOS") {
     return "Review constraint ownership, confirm required-by date, escalate blocker as needed, and convert to issue or action item if unresolved.";
   }
+  if (
+  field === "mitigation" &&
+  value !== risk.mitigation
+) {
+  history.push({
+    date: new Date().toISOString(),
+    action: "Mitigation Plan Updated",
+  });
+}
+if (
+  field === "trigger" &&
+  value !== risk.trigger
+) {
+  history.push({
+    date: new Date().toISOString(),
+    action: "Risk Trigger Updated",
+  });
+}
+if (field === "probability") {
+  history.push({
+    date: new Date().toISOString(),
+    action: `Probability Changed: ${risk.probability} → ${value}`,
+  });
+}
+if (field === "impact") {
+  history.push({
+    date: new Date().toISOString(),
+    action: `Impact Changed: ${risk.impact} → ${value}`,
+  });
+}
 
   return "Assign accountable owner, define mitigation actions, monitor trend, and escalate if risk worsens.";
 }
@@ -756,6 +887,11 @@ function getDefaultTrigger(riskTitle, category, source) {
 }
 function calculateRiskTrend(risk) {
   const title = String(risk.title || "").toLowerCase();
+  const milestoneSlipDays = getLinkedMilestoneSlipDays(risk);
+
+if (milestoneSlipDays > 0) {
+  return "Worsening";
+}
 
   if (title.includes("constraint") || risk.sourceType === "ConstraintOS") {
     const escalatedCount = constraints.filter(
@@ -845,6 +981,44 @@ function getConstraintAge(constraint) {
                 </p>
               </div>
             </div>
+            <div className="data-card">
+  <div className="section-header-row">
+    <div>
+      <h2>Executive Alerts</h2>
+      <p>Schedule-linked risks requiring leadership attention.</p>
+    </div>
+  </div>
+
+  {executiveAlerts.length === 0 ? (
+    <p>No executive alerts at this time.</p>
+  ) : (
+    <table className="data-table">
+      <thead>
+        <tr>
+          <th>Executive Alert</th>
+          <th>Risk</th>
+          <th>Linked Milestone</th>
+          <th>Slip</th>
+          <th>Score</th>
+          <th>Recommended Action</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        {executiveAlerts.map((alert) => (
+          <tr key={alert.id}>
+            <td>🔴 {alert.alertMessage}</td>
+            <td>{alert.risk}</td>
+            <td>{alert.linkedMilestone}</td>
+            <td>{alert.slipDays} days</td>
+            <td>{alert.score}</td>
+            <td>{alert.recommendation}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  )}
+</div>
 
             {topExecutiveRisks.length === 0 ? (
               <p>No active risks are currently in the executive brief.</p>
@@ -1053,6 +1227,7 @@ function getConstraintAge(constraint) {
   category: risk.category,
   sourceType: risk.source,
   source: risk.source,
+  linkedMilestone: "",
   probability: risk.probability || 3,
   impact: risk.impact || 3,
   score: (risk.probability || 3) * (risk.impact || 3),
@@ -1067,6 +1242,12 @@ function getConstraintAge(constraint) {
     getDefaultTrigger(risk.risk, risk.category, risk.source),
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
+  history: [
+  {
+    date: new Date().toISOString(),
+    action: "Risk Created",
+  },
+],
 },
                 ]);
 
@@ -1282,7 +1463,11 @@ function getConstraintAge(constraint) {
                   <th>Owner</th>
                   <th>Mitigation</th>
                   <th>Trigger</th>
-                  <th>Actions</th>
+<th>Linked Milestone</th>
+<th>Baseline Date</th>
+<th>Slip Days</th>
+<th>Recommended Action</th>
+<th>Actions</th>
                 </tr>
               </thead>
 
@@ -1411,14 +1596,29 @@ function getConstraintAge(constraint) {
                       </td>
 
                       <td>
-                        <input
-                          value={risk.owner}
-                          onChange={(e) =>
-                            updateRisk(risk.id, "owner", e.target.value)
-                          }
-                          placeholder="Unassigned"
-                        />
-                      </td>
+  <select
+    value={risk.owner || ""}
+    onChange={(e) =>
+      updateRisk(risk.id, "owner", e.target.value)
+    }
+  >
+    <option value="">Unassigned</option>
+
+    {teamMembers.map((member) => {
+      const memberName =
+        member.name || member.fullName || member.email || "Unnamed";
+
+      return (
+        <option
+          key={member.id || member.email || memberName}
+          value={memberName}
+        >
+          {memberName}
+        </option>
+      );
+    })}
+  </select>
+</td>
 
                       <td>
                         <textarea
@@ -1437,6 +1637,40 @@ function getConstraintAge(constraint) {
                           }
                         />
                       </td>
+                      <td>
+  <select
+    value={risk.linkedMilestone || ""}
+    onChange={(e) =>
+      updateRisk(
+        risk.id,
+        "linkedMilestone",
+        e.target.value
+      )
+    }
+  >
+    <option value="">Not Linked</option>
+
+    {milestones.map((milestone) => (
+      <option
+        key={milestone.id}
+        value={milestone.name}
+      >
+        {milestone.name}
+      </option>
+    ))}
+  </select>
+</td>
+<td>
+  {risk.baselineMilestoneDate || "-"}
+</td>
+<td>
+  {getLinkedMilestoneSlipDays(risk) > 0
+    ? `${getLinkedMilestoneSlipDays(risk)} days`
+    : "-"}
+</td>
+<td>
+  {getRiskRecommendation(risk)}
+</td>
 
                       <td>
                         <button
@@ -1451,7 +1685,63 @@ function getConstraintAge(constraint) {
                   ))
                 )}
               </tbody>
-            </table>
+                       </table>
+          </div>
+<label>
+  Filter by Risk
+  <select
+    value={historyRiskFilter}
+    onChange={(e) => setHistoryRiskFilter(e.target.value)}
+  >
+    <option>All Risks</option>
+    {riskPlaybook.map((risk) => (
+      <option key={risk.id} value={risk.title}>
+        {risk.title}
+      </option>
+    ))}
+  </select>
+</label>
+          <div className="data-card">
+            <div className="section-header-row">
+              <div>
+                <h2>Risk History</h2>
+                <p>
+                  Timeline of key risk events, status changes, and trend changes.
+                </p>
+              </div>
+            </div>
+
+            {riskPlaybook.length === 0 ? (
+              <p>No risk history has been created yet.</p>
+            ) : (
+              
+              <table className="data-table">
+  <thead>
+    <tr>
+      <th>Date</th>
+      <th>Risk</th>
+      <th>Event</th>
+    </tr>
+  </thead>
+
+  <tbody>
+    {historyRows.map((row, index) => (
+  <tr key={index}>
+          <td>
+  {new Date(row.date).toLocaleDateString()}
+</td>
+
+<td>{row.risk}</td>
+
+<td>{row.action}</td>
+        </tr>
+      ))}
+    
+  </tbody>
+</table>
+
+          
+            )}
           </div>
         </>
       )}

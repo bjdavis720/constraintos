@@ -288,17 +288,34 @@ console.log("REL COUNT", latestScheduleRelationships.length);
 
   useEffect(() => {
   try {
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({
-        activePage,
-        projects,
-        selectedProject,
-        projectData,
-      })
+    const lightweightProjectData = Object.fromEntries(
+      Object.entries(projectData).map(([projectId, data]) => [
+        projectId,
+        {
+          ...data,
+          scheduleSnapshots: [],
+          scheduleActivities: [],
+          scheduleRelationships: [],
+        },
+      ])
     );
+
+    const savePayload = JSON.stringify({
+      activePage,
+      projects,
+      selectedProject,
+      projectData: lightweightProjectData,
+    });
+
+    console.log(
+      "SENTINELOS STORAGE SIZE MB",
+      (savePayload.length / 1024 / 1024).toFixed(2)
+    );
+
+    localStorage.setItem(STORAGE_KEY, savePayload);
   } catch (error) {
     console.error("ConstraintOS save failed:", error);
+    alert(`SentinelOS save failed: ${error.name} - ${error.message}`);
   }
 }, [activePage, projects, selectedProject, projectData]);
   function createProject(e) {
@@ -484,21 +501,55 @@ function updateProjectHealthOS(updatedHealthData) {
     return;
   }
 
-  const formattedMilestones = importedMilestones.map((milestone, index) => ({
-    id: Date.now() + index,
-    name: milestone.activityName || milestone.name,
-    due: milestone.finish || milestone.due,
-    status: "Imported",
-    sourceActivityId: milestone.activityId || "",
-  }));
+  const existingMilestones = milestones || [];
+  const updatedMilestones = [...existingMilestones];
 
-  updateCurrentProjectData({
-    milestones: [...milestones, ...formattedMilestones],
+  importedMilestones.forEach((milestone, index) => {
+    const sourceActivityId = milestone.activityId || "";
+    const milestoneName = milestone.activityName || milestone.name || "";
+    const milestoneDue = milestone.finish || milestone.due || "";
+
+    const existingIndex = updatedMilestones.findIndex(
+      (existing) =>
+        (sourceActivityId &&
+          existing.sourceActivityId &&
+          existing.sourceActivityId === sourceActivityId) ||
+        existing.name === milestoneName
+    );
+
+    if (existingIndex >= 0) {
+      const existingMilestone = updatedMilestones[existingIndex];
+
+      updatedMilestones[existingIndex] = {
+        ...existingMilestone,
+        name: milestoneName,
+        due: milestoneDue,
+        originalBaselineDate:
+          existingMilestone.originalBaselineDate ||
+          existingMilestone.due ||
+          milestoneDue,
+        sourceActivityId,
+        lastScheduleUpdate: new Date().toISOString(),
+      };
+    } else {
+      updatedMilestones.push({
+        id: Date.now() + index,
+        name: milestoneName,
+        due: milestoneDue,
+        originalBaselineDate: milestoneDue,
+        status: "Imported",
+        sourceActivityId,
+        lastScheduleUpdate: new Date().toISOString(),
+      });
+    }
   });
 
- }
+  updateCurrentProjectData({
+    milestones: updatedMilestones,
+  });
+}
 
-function importIssuesFromSchedule(importedIssues) {
+ function importIssuesFromSchedule(importedIssues) {
   if (!selectedProject) {
     alert("Please create or select a project first.");
     return;
@@ -1331,6 +1382,8 @@ setPpcHistory={(nextPpcHistory) =>
   projectHealthOS={projectHealthOS}
   scheduleSnapshots={scheduleSnapshots}
 revenueHistory={revenueHistory}
+teamMembers={teamMembers}
+milestones={milestones}
   
 />
 )}
@@ -1443,5 +1496,3 @@ deleteConstraint={deleteConstraint}
 }
 
 export default App;
-
-

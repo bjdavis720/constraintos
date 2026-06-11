@@ -144,8 +144,10 @@ function ScheduleMilestones({
           <thead>
             <tr>
               <th>Name</th>
-              <th>Target Date</th>
-              <th>Status</th>
+<th>Original Baseline</th>
+<th>Current Date</th>
+<th>Variance</th>
+<th>Status</th>
               <th>Open Issues</th>
               <th>Open Actions</th>
               <th>Action</th>
@@ -155,7 +157,7 @@ function ScheduleMilestones({
           <tbody>
             {activeMilestones.length === 0 && (
               <tr>
-                <td colSpan="6">No active milestones.</td>
+                <td colSpan="8">No active milestones.</td>
               </tr>
             )}
 
@@ -165,9 +167,23 @@ function ScheduleMilestones({
                 <React.Fragment key={milestone.id}>
                   <tr>
                     <td>{milestone.name}</td>
-                    <td>{milestone.due}</td>
-                    <td>
-                      <button
+
+<td>{milestone.originalBaselineDate || milestone.due || "-"}</td>
+
+<td>{milestone.due || "-"}</td>
+
+<td>
+  {milestone.originalBaselineDate && milestone.due
+    ? `${Math.ceil(
+        (new Date(milestone.due) -
+          new Date(milestone.originalBaselineDate)) /
+          (1000 * 60 * 60 * 24)
+      )} days`
+    : "-"}
+</td>
+
+<td>
+  <button
                         type="button"
                         className={`status-pill-button ${milestone.status
                           .replaceAll(" ", "-")

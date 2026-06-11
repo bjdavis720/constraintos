@@ -275,8 +275,14 @@ function ScheduleIntelligence({
   }
 
   function addCurrentActivityToMilestones(activity) {
-    importMilestones([activity]);
-  }
+  importMilestones([activity]);
+
+  alert(
+    `Milestone updated: ${activity.activityName} → ${
+      activity.finish || "No date"
+    }`
+  );
+}
 
   function createIssueFromCurrentActivity(activity) {
     importIssuesFromSchedule([
@@ -763,9 +769,9 @@ function ScheduleIntelligence({
                           onClick={() =>
                             addCurrentActivityToMilestones(activity)
                           }
-                          disabled={alreadyMilestone}
+                          disabled={false}
                         >
-                          {alreadyMilestone ? "Already Added" : "Add Milestone"}
+                          {alreadyMilestone ? "Update Milestone" : "Add Milestone"}
                         </button>
 
                         <button
