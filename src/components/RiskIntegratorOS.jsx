@@ -815,39 +815,9 @@ function getDefaultMitigation(riskTitle, category, source) {
     return "Review during monthly project health meeting, assign accountable owner, document corrective action, and track status until item improves.";
   }
 
-  if (source === "ConstraintOS") {
+    if (source === "ConstraintOS") {
     return "Review constraint ownership, confirm required-by date, escalate blocker as needed, and convert to issue or action item if unresolved.";
   }
-  if (
-  field === "mitigation" &&
-  value !== risk.mitigation
-) {
-  history.push({
-    date: new Date().toISOString(),
-    action: "Mitigation Plan Updated",
-  });
-}
-if (
-  field === "trigger" &&
-  value !== risk.trigger
-) {
-  history.push({
-    date: new Date().toISOString(),
-    action: "Risk Trigger Updated",
-  });
-}
-if (field === "probability") {
-  history.push({
-    date: new Date().toISOString(),
-    action: `Probability Changed: ${risk.probability} → ${value}`,
-  });
-}
-if (field === "impact") {
-  history.push({
-    date: new Date().toISOString(),
-    action: `Impact Changed: ${risk.impact} → ${value}`,
-  });
-}
 
   return "Assign accountable owner, define mitigation actions, monitor trend, and escalate if risk worsens.";
 }
@@ -931,8 +901,9 @@ function getConstraintAge(constraint) {
     Math.ceil((today - createdDate) / (1000 * 60 * 60 * 24))
   );
 }
-  return (
-    <div className="page">
+
+return (
+    <div className="page risk-integrator-page">
       <ModuleHeader
         logo="riskintegrator-logo.png"
         title="RiskIntegratorOS"
@@ -1184,108 +1155,111 @@ function getConstraintAge(constraint) {
             </div>
           </div>
 
-          <div className="data-card">
-            <div className="section-header-row">
-              <div>
-                <div className="data-card">
-  <h2>Suggested Risks</h2>
+                    <div className="data-card">
+            <h2>Suggested Risks</h2>
+            <p>
+              Risks identified from contracts, schedules, constraints, project
+              health reviews, and other SentinelOS sources.
+            </p>
 
-  <p>
-    Risks identified from contracts, schedules,
-    constraints, project health reviews,
-    and other SentinelOS sources.
-  </p>
+            <table className="data-table suggested-risks-table">
+              <thead>
+                <tr>
+                  <th>Risk</th>
+                  <th>Category</th>
+                  <th>Source</th>
+                  <th>Confidence</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
 
-  <table className="data-table">
-    <thead>
-      <tr>
-        <th>Risk</th>
-        <th>Category</th>
-        <th>Source</th>
-        <th>Confidence</th>
-        <th>Actions</th>
-      </tr>
-    </thead>
+              <tbody>
+                {suggestedRisks.map((risk) => (
+                  <tr key={risk.id}>
+                    <td>{risk.risk}</td>
+                    <td>{risk.category}</td>
+                    <td>{risk.source}</td>
+                    <td>{risk.confidence}</td>
 
-    <tbody>
-      {suggestedRisks.map((risk) => (
-        <tr key={risk.id}>
-          <td>{risk.risk}</td>
-          <td>{risk.category}</td>
-          <td>{risk.source}</td>
-          <td>{risk.confidence}</td>
+                    <td>
+                      <button
+                        className="primary-button"
+                        onClick={() => {
+                          setRiskPlaybook([
+                            ...riskPlaybook,
+                            {
+                              id: crypto.randomUUID(),
+                              title: risk.risk,
+                              category: risk.category,
+                              sourceType: risk.source,
+                              source: risk.source,
+                              linkedMilestone: "",
+                              probability: risk.probability || 3,
+                              impact: risk.impact || 3,
+                              score:
+                                (risk.probability || 3) *
+                                (risk.impact || 3),
+                              owner: risk.owner || "Project Executive",
+                              status: "Open",
+                              trend: "Stable",
+                              mitigation:
+                                risk.mitigation ||
+                                getDefaultMitigation(
+                                  risk.risk,
+                                  risk.category,
+                                  risk.source
+                                ),
+                              trigger:
+                                risk.trigger ||
+                                getDefaultTrigger(
+                                  risk.risk,
+                                  risk.category,
+                                  risk.source
+                                ),
+                              createdAt: new Date().toISOString(),
+                              updatedAt: new Date().toISOString(),
+                              history: [
+                                {
+                                  date: new Date().toISOString(),
+                                  action: "Risk Created",
+                                },
+                              ],
+                            },
+                          ]);
 
-          <td>
-            <button
-              className="primary-button"
-              onClick={() => {
-                setRiskPlaybook([
-  ...riskPlaybook,
-                  {
-  id: crypto.randomUUID(),
-  title: risk.risk,
-  category: risk.category,
-  sourceType: risk.source,
-  source: risk.source,
-  linkedMilestone: "",
-  probability: risk.probability || 3,
-  impact: risk.impact || 3,
-  score: (risk.probability || 3) * (risk.impact || 3),
-  owner: risk.owner || "Project Executive",
-  status: "Open",
-  trend: "Stable",
-  mitigation:
-    risk.mitigation ||
-    getDefaultMitigation(risk.risk, risk.category, risk.source),
-  trigger:
-    risk.trigger ||
-    getDefaultTrigger(risk.risk, risk.category, risk.source),
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString(),
-  history: [
-  {
-    date: new Date().toISOString(),
-    action: "Risk Created",
-  },
-],
-},
-                ]);
+                          setSuggestedRisks(
+                            suggestedRisks.filter(
+                              (item) => item.id !== risk.id
+                            )
+                          );
+                        }}
+                      >
+                        Accept
+                      </button>
 
-                setSuggestedRisks(
-                  suggestedRisks.filter(
-                    (item) => item.id !== risk.id
-                  )
-                );
-              }}
-            >
-              Accept
-            </button>
+                      <button
+                        className="danger-button"
+                        onClick={() =>
+                          setSuggestedRisks(
+                            suggestedRisks.filter(
+                              (item) => item.id !== risk.id
+                            )
+                          )
+                        }
+                      >
+                        Reject
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
 
-            <button
-              className="danger-button"
-              onClick={() =>
-                setSuggestedRisks(
-                  suggestedRisks.filter(
-                    (item) => item.id !== risk.id
-                  )
-                )
-              }
-            >
-              Reject
-            </button>
-          </td>
-        </tr>
-      ))}
-    </tbody>
-  </table>
-</div>
-                <h2>Add Risk</h2>
-                <p>
-                  Manually add a risk when it has not yet been generated by a
-                  source document or Sentinel module.
-                </p>
-              </div>
-            </div>
+            <h2>Add Risk</h2>
+            <p>
+              Manually add a risk when it has not yet been generated by a source
+              document or Sentinel module.
+            </p>
 
             <form className="form-grid" onSubmit={addRisk}>
               <label>
@@ -1370,12 +1344,30 @@ function getConstraintAge(constraint) {
 
               <label>
                 Owner
-                <input
+                <select
                   name="owner"
                   value={riskForm.owner}
                   onChange={handleFormChange}
-                  placeholder="Risk owner"
-                />
+                >
+                  <option value="">Unassigned</option>
+
+                  {teamMembers.map((member) => {
+                    const memberName =
+                      member.name ||
+                      member.fullName ||
+                      member.email ||
+                      "Unnamed";
+
+                    return (
+                      <option
+                        key={member.id || member.email || memberName}
+                        value={memberName}
+                      >
+                        {memberName}
+                      </option>
+                    );
+                  })}
+                </select>
               </label>
 
               <label>
@@ -1460,7 +1452,7 @@ function getConstraintAge(constraint) {
                   <th>Level</th>
                   <th>Trend</th>
                   <th>Status</th>
-                  <th>Owner</th>
+    
                   <th>Mitigation</th>
                   <th>Trigger</th>
 <th>Linked Milestone</th>
@@ -1686,30 +1678,35 @@ function getConstraintAge(constraint) {
                 )}
               </tbody>
                        </table>
-          </div>
-<label>
-  Filter by Risk
-  <select
-    value={historyRiskFilter}
-    onChange={(e) => setHistoryRiskFilter(e.target.value)}
-  >
-    <option>All Risks</option>
-    {riskPlaybook.map((risk) => (
-      <option key={risk.id} value={risk.title}>
-        {risk.title}
-      </option>
-    ))}
-  </select>
-</label>
+                    </div>
+
           <div className="data-card">
             <div className="section-header-row">
               <div>
                 <h2>Risk History</h2>
-                <p>
-                  Timeline of key risk events, status changes, and trend changes.
-                </p>
-              </div>
-            </div>
+    <p>
+      Timeline of key risk events, status changes, and trend changes.
+    </p>
+  </div>
+
+  <div className="risk-history-filter">
+  <label>
+    Filter by Risk
+    <select
+      value={historyRiskFilter}
+      onChange={(e) => setHistoryRiskFilter(e.target.value)}
+    >
+      <option>All Risks</option>
+
+      {riskPlaybook.map((risk) => (
+        <option key={risk.id} value={risk.title}>
+          {risk.title}
+        </option>
+      ))}
+    </select>
+  </label>
+</div>
+</div>
 
             {riskPlaybook.length === 0 ? (
               <p>No risk history has been created yet.</p>
@@ -1746,7 +1743,7 @@ function getConstraintAge(constraint) {
         </>
       )}
     </div>
-  );
-}
+      );
 
-export default RiskIntegratorOS;
+    }
+      export default RiskIntegratorOS;
