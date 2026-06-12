@@ -80,6 +80,8 @@ milestones = [],
   const risksWithoutOwners = activeRisks.filter((risk) => !risk.owner);
   const worseningRisks = activeRisks.filter((risk) => risk.trend === "Worsening");
   const executiveAlerts = getExecutiveAlerts();
+  console.log("Executive Alerts:", executiveAlerts);
+console.log("Active Risks:", activeRisks);
   const executiveHealthScore = Math.max(
     0,
     100 -
@@ -461,24 +463,65 @@ if (slipDays > 0) return "Monitor";
   return "No Action";
 }
 function getExecutiveAlerts() {
-  return riskPlaybook
-    .map((risk) => {
-      const slipDays = getLinkedMilestoneSlipDays(risk);
-      const recommendation = getRiskRecommendation(risk);
+  const alerts = [];
 
-      if (slipDays <= 0) return null;
+  activeRisks.forEach((risk) => {
+    const level = getRiskLevel(risk.score);
+    const slipDays = getLinkedMilestoneSlipDays(risk);
+    const ownerMissing = !risk.owner || risk.owner === "Unassigned";
+    const trend = calculateRiskTrend(risk);
+    if (level === "Critical" && risk.status === "Open") {
+  alerts.push({
+    id: `${risk.id}-critical-open`,
+    type: "Critical Risk Open",
+    risk: risk.title,
+    message: "Critical risk is open and requires executive monitoring.",
+    recommendation: "Confirm owner, mitigation plan, and next review date.",
+  });
+}
 
-      return {
-  id: risk.id,
-  risk: risk.title,
-  linkedMilestone: risk.linkedMilestone,
-  slipDays,
-  score: risk.score,
-  recommendation,
-  alertMessage: `${risk.linkedMilestone} slipped ${slipDays} days`,
-};
-    })
-    .filter(Boolean);
+    if (level === "Critical" && ownerMissing) {
+      alerts.push({
+        id: `${risk.id}-owner`,
+        type: "Critical Risk Without Owner",
+        risk: risk.title,
+        message: "Critical risk does not have an assigned owner.",
+        recommendation: "Assign accountable owner immediately.",
+      });
+    }
+
+    if (level === "Critical" && trend === "Worsening") {
+      alerts.push({
+        id: `${risk.id}-worsening`,
+        type: "Critical Risk Worsening",
+        risk: risk.title,
+        message: "Critical risk trend is worsening.",
+        recommendation: "Review mitigation plan and escalate if needed.",
+      });
+    }
+
+    if (risk.status === "Escalated") {
+      alerts.push({
+        id: `${risk.id}-escalated`,
+        type: "Escalated Risk",
+        risk: risk.title,
+        message: "Risk has been escalated for leadership attention.",
+        recommendation: "Confirm executive decision or recovery action.",
+      });
+    }
+
+    if (risk.linkedMilestone && slipDays > 0) {
+      alerts.push({
+        id: `${risk.id}-milestone`,
+        type: "Linked Milestone Impact",
+        risk: risk.title,
+        message: `${risk.linkedMilestone} has slipped ${slipDays} days.`,
+        recommendation: getRiskRecommendation(risk),
+      });
+    }
+  });
+
+  return alerts;
 }
 function loadDemoSuggestedRisks() {
   
@@ -1031,28 +1074,24 @@ function getConstraintAge(constraint) {
   ) : (
     <table className="data-table">
       <thead>
-        <tr>
-          <th>Executive Alert</th>
-          <th>Risk</th>
-          <th>Linked Milestone</th>
-          <th>Slip</th>
-          <th>Score</th>
-          <th>Recommended Action</th>
-        </tr>
-      </thead>
+  <tr>
+    <th>Alert Type</th>
+    <th>Risk</th>
+    <th>Message</th>
+    <th>Recommended Action</th>
+  </tr>
+</thead>
 
       <tbody>
-        {executiveAlerts.map((alert) => (
-          <tr key={alert.id}>
-            <td>🔴 {alert.alertMessage}</td>
-            <td>{alert.risk}</td>
-            <td>{alert.linkedMilestone}</td>
-            <td>{alert.slipDays} days</td>
-            <td>{alert.score}</td>
-            <td>{alert.recommendation}</td>
-          </tr>
-        ))}
-      </tbody>
+  {executiveAlerts.map((alert) => (
+    <tr key={alert.id}>
+      <td>⚠️ {alert.type}</td>
+      <td>{alert.risk}</td>
+      <td>{alert.message}</td>
+      <td>{alert.recommendation}</td>
+    </tr>
+  ))}
+</tbody>
     </table>
   )}
 </div>
