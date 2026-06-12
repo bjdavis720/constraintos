@@ -1439,7 +1439,7 @@ function getConstraintAge(constraint) {
               </div>
             </div>
 
-            <form className="form-grid" onSubmit={addRisk}>
+            <form className="risk-add-form" onSubmit={addRisk}>
               <label>
                 Risk Title
                 <input
@@ -1869,76 +1869,53 @@ function getConstraintAge(constraint) {
               </tbody>
             </table>
           </div>
-<label>
-  Filter by Risk
-  <select
-    value={historyRiskFilter}
-    onChange={(e) => setHistoryRiskFilter(e.target.value)}
-  >
-    <option>All Risks</option>
-    {riskPlaybook.map((risk) => (
-      <option key={risk.id} value={risk.title}>
-        {risk.title}
-      </option>
-    ))}
-  </select>
-</label>
+
           <div className="data-card">
-            <div className="section-header-row">
-              <div>
-                <h2>Risk History</h2>
-                <div className="risk-history-timeline">
-  {historyRows.slice(0, 10).map((entry, index) => (
-    <div key={index} className="timeline-item">
-      <div className="timeline-date">
-        {new Date(entry.date).toLocaleDateString()}
-      </div>
-
-      <div className="timeline-content">
-        <strong>{entry.risk}</strong>
-        <div>{entry.action}</div>
-      </div>
+  <div className="section-header-row">
+    <div>
+      <h2>Risk History</h2>
+      <p>Timeline of key risk events, status changes, and trend changes.</p>
     </div>
-  ))}
-</div>
-                <p>
-                  Timeline of key risk events, status changes, and trend changes.
-                </p>
-              </div>
+  </div>
+
+  <div className="risk-history-filter">
+    <label>
+      Filter by Risk
+      <select
+        value={historyRiskFilter}
+        onChange={(e) => setHistoryRiskFilter(e.target.value)}
+      >
+        <option>All Risks</option>
+        {riskPlaybook.map((risk) => (
+          <option key={risk.id} value={risk.title}>
+            {risk.title}
+          </option>
+        ))}
+      </select>
+    </label>
+  </div>
+
+  {historyRows.length === 0 ? (
+    <p>No risk history has been created yet.</p>
+  ) : (
+    <div className="risk-history-timeline">
+      {historyRows.slice(0, 10).map((entry, index) => (
+        <div key={index} className="timeline-item">
+          <div className="timeline-left">
+            <div className="timeline-date">
+              {new Date(entry.date).toLocaleDateString()}
             </div>
-
-            {riskPlaybook.length === 0 ? (
-              <p>No risk history has been created yet.</p>
-            ) : (
-              
-              <table className="data-table">
-  <thead>
-    <tr>
-      <th>Date</th>
-      <th>Risk</th>
-      <th>Event</th>
-    </tr>
-  </thead>
-
-  <tbody>
-    {historyRows.map((row, index) => (
-  <tr key={index}>
-          <td>
-  {new Date(row.date).toLocaleDateString()}
-</td>
-
-<td>{row.risk}</td>
-
-<td>{row.action}</td>
-        </tr>
-      ))}
-    
-  </tbody>
-</table>
-
-          
-            )}
+            <strong>{entry.risk}</strong>
           </div>
+
+          <div className="timeline-event">
+            {entry.action}
+          </div>
+        </div>
+      ))}
+    </div>
+  )}
+</div>
         </>
       )}
     </div>

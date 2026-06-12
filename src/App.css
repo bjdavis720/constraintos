@@ -4061,3 +4061,222 @@ textarea.form-input {
   color: #12325f;
   margin-bottom: 4px;
 }
+/* RiskIntegratorOS Add Risk Form Cleanup */
+
+.risk-add-form {
+  margin-top: 14px;
+  padding: 18px;
+  border: 1px solid #d8dee9;
+  border-radius: 16px;
+  background: #fbfdff;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.risk-add-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: #12325f;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.risk-add-form input,
+.risk-add-form select,
+.risk-add-form textarea {
+  width: 100%;
+  min-height: 40px;
+  border: 1px solid #cfd8e3;
+  border-radius: 10px;
+  padding: 9px 12px;
+  font-family: inherit;
+  font-size: 14px;
+  background: #ffffff;
+  color: #172033;
+  box-sizing: border-box;
+}
+
+.risk-add-form textarea {
+  min-height: 90px;
+  resize: vertical;
+}
+
+.risk-add-form .full-width {
+  grid-column: 1 / -1;
+}
+/* =====================================================
+   RiskIntegratorOS - Add Risk Form
+===================================================== */
+
+.risk-add-form {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(220px, 1fr));
+  gap: 16px;
+  padding: 20px;
+  margin-top: 16px;
+  border: 1px solid #d8dee9;
+  border-radius: 14px;
+  background: #fbfdff;
+}
+
+.risk-add-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #17325c;
+}
+
+.risk-add-form input,
+.risk-add-form select,
+.risk-add-form textarea {
+  width: 100%;
+  border: 1px solid #cfd8e3;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-family: inherit;
+  background: #ffffff;
+  color: #172033;
+  box-sizing: border-box;
+}
+
+.risk-add-form textarea {
+  min-height: 90px;
+  resize: vertical;
+}
+
+.risk-add-form .full-width {
+  grid-column: 1 / -1;
+}
+
+.risk-add-form button {
+  width: fit-content;
+}
+/* Risk History Timeline Cleanup */
+
+.risk-history-filter {
+  margin: 0 0 16px;
+  max-width: 420px;
+}
+
+.risk-history-filter label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 800;
+  color: #12325f;
+}
+
+.risk-history-filter select {
+  border: 1px solid #cfd8e3;
+  border-radius: 10px;
+  padding: 9px 12px;
+  font-family: inherit;
+  font-size: 14px;
+  background: #ffffff;
+  color: #172033;
+}
+
+.risk-history-timeline {
+  margin-top: 18px;
+  width: 100%;
+  border-left: none;
+  padding-left: 0;
+}
+
+.timeline-item {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 24px;
+  padding: 16px 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.timeline-date {
+  font-size: 12px;
+  font-weight: 800;
+  color: #64748b;
+  margin-bottom: 6px;
+}
+
+.timeline-content strong {
+  display: block;
+  color: #12325f;
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+
+.timeline-content div {
+  color: #172033;
+  font-size: 14px;
+}
+/* RiskIntegratorOS Risk History Timeline */
+
+.risk-history-filter {
+  max-width: 520px;
+  margin: 10px 0 18px;
+}
+
+.risk-history-filter label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: #12325f;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.risk-history-filter select {
+  border: 1px solid #cfd8e3;
+  border-radius: 10px;
+  padding: 9px 12px;
+  font-family: inherit;
+  font-size: 14px;
+  background: #ffffff;
+  color: #172033;
+}
+
+.risk-history-timeline {
+  width: 100%;
+  margin-top: 12px;
+}
+
+.timeline-item {
+  display: grid;
+  grid-template-columns: 360px 1fr;
+  gap: 28px;
+  align-items: start;
+  padding: 16px 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.timeline-left {
+  border-left: 4px solid #1d4ed8;
+  padding-left: 16px;
+}
+
+.timeline-date {
+  font-size: 12px;
+  font-weight: 800;
+  color: #64748b;
+  margin-bottom: 6px;
+}
+
+.timeline-left strong {
+  display: block;
+  color: #12325f;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.timeline-event {
+  color: #172033;
+  font-size: 14px;
+  line-height: 1.45;
+  padding-top: 18px;
+}
