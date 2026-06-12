@@ -3854,3 +3854,174 @@ textarea.form-input {
 .risk-analysis-grid {
   grid-template-columns: repeat(2, minmax(220px, 1fr)) !important;
 }
+/* RiskIntegratorOS Executive Alert Cards */
+
+.executive-alert-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(280px, 1fr));
+  gap: 18px;
+  margin-top: 16px;
+}
+
+.executive-alert-card {
+  border: 1px solid #fecaca;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #fff7f7 0%, #ffffff 100%);
+  padding: 18px;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.06);
+}
+
+.executive-alert-topline {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.executive-alert-icon {
+  font-size: 22px;
+}
+
+.executive-alert-type {
+  color: #b91c1c;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.executive-alert-priority {
+  margin-left: auto;
+  background: #fee2e2;
+  color: #b91c1c;
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.executive-alert-card h3 {
+  margin: 0 0 14px;
+  color: #172033;
+  font-size: 17px;
+}
+
+.executive-alert-meta {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 14px;
+  background: #ffffff;
+}
+
+.executive-alert-meta span {
+  display: block;
+  color: #667085;
+  font-size: 12px;
+  font-weight: 800;
+  margin-bottom: 4px;
+}
+
+.executive-alert-meta strong {
+  color: #172033;
+  font-size: 13px;
+}
+
+.executive-alert-body p {
+  margin: 8px 0;
+  color: #172033;
+  line-height: 1.45;
+}
+
+@media (max-width: 1100px) {
+  .executive-alert-grid {
+    grid-template-columns: 1fr;
+  }
+}
+/* RiskIntegratorOS Executive KPI Tiles */
+
+.executive-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(130px, 1fr));
+  gap: 14px;
+  margin: 18px 0;
+}
+
+.executive-kpi-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 92px;
+  padding: 16px;
+  border: 1px solid #d8dee9;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.06);
+}
+
+.executive-kpi-card h3 {
+  margin: 0 0 8px;
+  color: #475467;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.executive-kpi-card strong {
+  color: #12325f;
+  font-size: 30px;
+  line-height: 1;
+}
+
+.kpi-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  background: #eff6ff;
+  font-size: 22px;
+}
+
+.executive-kpi-card.critical {
+  border-color: #fecaca;
+  background: linear-gradient(180deg, #fff7f7 0%, #ffffff 100%);
+}
+
+.executive-kpi-card.critical strong {
+  color: #b91c1c;
+}
+
+.executive-kpi-card.high {
+  border-color: #fed7aa;
+  background: linear-gradient(180deg, #fff7ed 0%, #ffffff 100%);
+}
+
+.executive-kpi-card.high strong {
+  color: #c2410c;
+}
+
+.executive-kpi-card.health {
+  border-color: #bbf7d0;
+  background: linear-gradient(180deg, #f0fdf4 0%, #ffffff 100%);
+}
+
+.executive-kpi-card.health strong {
+  color: #15803d;
+}
+
+@media (max-width: 1400px) {
+  .executive-kpi-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+@media (max-width: 800px) {
+  .executive-kpi-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

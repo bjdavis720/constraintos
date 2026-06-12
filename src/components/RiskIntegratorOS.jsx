@@ -475,6 +475,9 @@ function getExecutiveAlerts() {
     id: `${risk.id}-critical-open`,
     type: "Critical Risk Open",
     risk: risk.title,
+    owner: risk.owner || "Unassigned",
+  status: risk.status || "Open",
+  daysOpen: getRiskAgeDays(risk),
     message: "Critical risk is open and requires executive monitoring.",
     recommendation: "Confirm owner, mitigation plan, and next review date.",
   });
@@ -485,6 +488,9 @@ function getExecutiveAlerts() {
         id: `${risk.id}-owner`,
         type: "Critical Risk Without Owner",
         risk: risk.title,
+        owner: risk.owner || "Unassigned",
+  status: risk.status || "Open",
+  daysOpen: getRiskAgeDays(risk),
         message: "Critical risk does not have an assigned owner.",
         recommendation: "Assign accountable owner immediately.",
       });
@@ -495,6 +501,9 @@ function getExecutiveAlerts() {
         id: `${risk.id}-worsening`,
         type: "Critical Risk Worsening",
         risk: risk.title,
+        owner: risk.owner || "Unassigned",
+  status: risk.status || "Open",
+  daysOpen: getRiskAgeDays(risk),
         message: "Critical risk trend is worsening.",
         recommendation: "Review mitigation plan and escalate if needed.",
       });
@@ -505,6 +514,7 @@ function getExecutiveAlerts() {
         id: `${risk.id}-escalated`,
         type: "Escalated Risk",
         risk: risk.title,
+        
         message: "Risk has been escalated for leadership attention.",
         recommendation: "Confirm executive decision or recovery action.",
       });
@@ -1009,47 +1019,71 @@ function getConstraintAge(constraint) {
         </div>
       ) : (
         <>
-          <div className="metric-grid">
-            <div className="metric-card">
-              <h3>Active Risks</h3>
-              <div className="metric-value">{activeRisks.length}</div>
-            </div>
+          <div className="executive-kpi-grid">
+  <div className="executive-kpi-card">
+    <span className="kpi-icon">🛡️</span>
+    <div>
+      <h3>Active Risks</h3>
+      <strong>{activeRisks.length}</strong>
+    </div>
+  </div>
 
-            <div className="metric-card">
-              <h3>Critical Risks</h3>
-              <div className="metric-value">{criticalRisks.length}</div>
-            </div>
+  <div className="executive-kpi-card critical">
+    <span className="kpi-icon">⚠️</span>
+    <div>
+      <h3>Critical Risks</h3>
+      <strong>{criticalRisks.length}</strong>
+    </div>
+  </div>
 
-            <div className="metric-card">
-              <h3>High Risks</h3>
-              <div className="metric-value">{highRisks.length}</div>
-            </div>
+  <div className="executive-kpi-card high">
+    <span className="kpi-icon">📈</span>
+    <div>
+      <h3>High Risks</h3>
+      <strong>{highRisks.length}</strong>
+    </div>
+  </div>
 
-            <div className="metric-card">
-              <h3>Escalated</h3>
-              <div className="metric-value">{escalatedRisks.length}</div>
-            </div>
+  <div className="executive-kpi-card">
+    <span className="kpi-icon">📣</span>
+    <div>
+      <h3>Escalated</h3>
+      <strong>{escalatedRisks.length}</strong>
+    </div>
+  </div>
 
-            <div className="metric-card">
-              <h3>No Owner</h3>
-              <div className="metric-value">{risksWithoutOwners.length}</div>
-            </div>
+  <div className="executive-kpi-card">
+    <span className="kpi-icon">👤</span>
+    <div>
+      <h3>No Owner</h3>
+      <strong>{risksWithoutOwners.length}</strong>
+    </div>
+  </div>
 
-            <div className="metric-card">
-              <h3>Worsening</h3>
-              <div className="metric-value">{worseningRisks.length}</div>
-            </div>
+  <div className="executive-kpi-card high">
+    <span className="kpi-icon">📉</span>
+    <div>
+      <h3>Worsening</h3>
+      <strong>{worseningRisks.length}</strong>
+    </div>
+  </div>
 
-            <div className="metric-card">
-              <h3>Executive Alerts</h3>
-              <div className="metric-value">{executiveAlerts.length}</div>
-            </div>
+  <div className="executive-kpi-card critical">
+    <span className="kpi-icon">🔔</span>
+    <div>
+      <h3>Executive Alerts</h3>
+      <strong>{executiveAlerts.length}</strong>
+    </div>
+  </div>
 
-            <div className="metric-card">
-              <h3>Health Score</h3>
-              <div className="metric-value">{executiveHealthScore}</div>
-            </div>
-          </div>
+  <div className="executive-kpi-card health">
+    <span className="kpi-icon">💚</span>
+    <div>
+      <h3>Health Score</h3>
+      <strong>{executiveHealthScore}</strong>
+    </div>
+  </div>
+</div>
 
           <div className="data-card">
             <div className="section-header-row">
@@ -1073,25 +1107,49 @@ function getConstraintAge(constraint) {
     <p>No executive alerts at this time.</p>
   ) : (
     <table className="data-table">
-      <thead>
-  <tr>
-    <th>Alert Type</th>
-    <th>Risk</th>
-    <th>Message</th>
-    <th>Recommended Action</th>
-  </tr>
-</thead>
+     {executiveAlerts.length === 0 ? (
+  <p>No executive alerts at this time.</p>
+) : (
+  <div className="executive-alert-grid">
+    {executiveAlerts.map((alert) => (
+      <div className="executive-alert-card" key={alert.id}>
+        <div className="executive-alert-topline">
+          <span className="executive-alert-icon">⚠️</span>
+          <span className="executive-alert-type">{alert.type}</span>
+          <span className="executive-alert-priority">High Priority</span>
+        </div>
 
-      <tbody>
-  {executiveAlerts.map((alert) => (
-    <tr key={alert.id}>
-      <td>⚠️ {alert.type}</td>
-      <td>{alert.risk}</td>
-      <td>{alert.message}</td>
-      <td>{alert.recommendation}</td>
-    </tr>
-  ))}
-</tbody>
+        <h3>{alert.risk}</h3>
+
+        <div className="executive-alert-meta">
+          <div>
+            <span>Owner</span>
+            <strong>{alert.owner || "Unassigned"}</strong>
+          </div>
+
+          <div>
+            <span>Status</span>
+            <strong>{alert.status || "Open"}</strong>
+          </div>
+
+          <div>
+            <span>Days Open</span>
+            <strong>{alert.daysOpen ?? "-"}</strong>
+          </div>
+        </div>
+
+        <div className="executive-alert-body">
+          <p>
+            <strong>Message:</strong> {alert.message}
+          </p>
+          <p>
+            <strong>Recommended Action:</strong> {alert.recommendation}
+          </p>
+        </div>
+      </div>
+    ))}
+  </div>
+)}
     </table>
   )}
 </div>
