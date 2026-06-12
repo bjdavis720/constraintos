@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import ModuleHeader from "./ModuleHeader";
 
 const riskCategories = [
@@ -64,6 +64,7 @@ milestones = [],
     linkedMilestone: "",
   });
   const [historyRiskFilter, setHistoryRiskFilter] = useState("All Risks");
+  const [expandedRiskId, setExpandedRiskId] = useState(null);
 
   const activeRisks = riskPlaybook.filter(
     (risk) => risk.status !== "Closed" && risk.status !== "Retired"
@@ -80,13 +81,13 @@ milestones = [],
   const worseningRisks = activeRisks.filter((risk) => risk.trend === "Worsening");
   const executiveAlerts = getExecutiveAlerts();
   const executiveHealthScore = Math.max(
-  0,
-  100 -
-    criticalRisks.length * 10 -
-    highRisks.length * 5 -
-    worseningRisks.length * 3 -
-    risksWithoutOwners.length * 2
-);
+    0,
+    100 -
+      criticalRisks.length * 10 -
+      highRisks.length * 5 -
+      worseningRisks.length * 3 -
+      risksWithoutOwners.length * 2
+  );
   
   const historyRows = riskPlaybook
   .filter(
@@ -119,19 +120,19 @@ historyRows.sort(
   }
 
   function getRiskClass(score) {
-    if (score >= 20) return "status-pill off-track";
-    if (score >= 13) return "status-pill at-risk";
-    if (score >= 6) return "status-pill warning";
-    return "status-pill on-track";
-  }
-  function getRiskAgeDays(risk) {
-  if (!risk.createdAt) return 0;
-
-  return Math.ceil(
-    (new Date() - new Date(risk.createdAt)) /
-      (1000 * 60 * 60 * 24)
-  );
+  if (score >= 20) return "status-pill critical";
+  if (score >= 13) return "status-pill high";
+  if (score >= 6) return "status-pill moderate";
+  return "status-pill low";
 }
+
+  function getRiskAgeDays(risk) {
+    if (!risk.createdAt) return 0;
+
+    return Math.ceil(
+      (new Date() - new Date(risk.createdAt)) / (1000 * 60 * 60 * 24)
+    );
+  }
   
 
   function handleFormChange(e) {
@@ -831,9 +832,39 @@ function getDefaultMitigation(riskTitle, category, source) {
     return "Review during monthly project health meeting, assign accountable owner, document corrective action, and track status until item improves.";
   }
 
-    if (source === "ConstraintOS") {
+  if (source === "ConstraintOS") {
     return "Review constraint ownership, confirm required-by date, escalate blocker as needed, and convert to issue or action item if unresolved.";
   }
+  if (
+  field === "mitigation" &&
+  value !== risk.mitigation
+) {
+  history.push({
+    date: new Date().toISOString(),
+    action: "Mitigation Plan Updated",
+  });
+}
+if (
+  field === "trigger" &&
+  value !== risk.trigger
+) {
+  history.push({
+    date: new Date().toISOString(),
+    action: "Risk Trigger Updated",
+  });
+}
+if (field === "probability") {
+  history.push({
+    date: new Date().toISOString(),
+    action: `Probability Changed: ${risk.probability} → ${value}`,
+  });
+}
+if (field === "impact") {
+  history.push({
+    date: new Date().toISOString(),
+    action: `Impact Changed: ${risk.impact} → ${value}`,
+  });
+}
 
   return "Assign accountable owner, define mitigation actions, monitor trend, and escalate if risk worsens.";
 }
@@ -917,9 +948,8 @@ function getConstraintAge(constraint) {
     Math.ceil((today - createdDate) / (1000 * 60 * 60 * 24))
   );
 }
-
-return (
-    <div className="page risk-integrator-page">
+  return (
+    <div className="page">
       <ModuleHeader
         logo="riskintegrator-logo.png"
         title="RiskIntegratorOS"
@@ -937,48 +967,46 @@ return (
       ) : (
         <>
           <div className="metric-grid">
-  <div className="metric-card">
-    <h3>Active Risks</h3>
-    <div className="metric-value">{activeRisks.length}</div>
-  </div>
+            <div className="metric-card">
+              <h3>Active Risks</h3>
+              <div className="metric-value">{activeRisks.length}</div>
+            </div>
 
-  <div className="metric-card">
-    <h3>Critical Risks</h3>
-    <div className="metric-value">{criticalRisks.length}</div>
-  </div>
+            <div className="metric-card">
+              <h3>Critical Risks</h3>
+              <div className="metric-value">{criticalRisks.length}</div>
+            </div>
 
-  <div className="metric-card">
-    <h3>High Risks</h3>
-    <div className="metric-value">{highRisks.length}</div>
-  </div>
+            <div className="metric-card">
+              <h3>High Risks</h3>
+              <div className="metric-value">{highRisks.length}</div>
+            </div>
 
-  <div className="metric-card">
-    <h3>Escalated</h3>
-    <div className="metric-value">{escalatedRisks.length}</div>
-  </div>
+            <div className="metric-card">
+              <h3>Escalated</h3>
+              <div className="metric-value">{escalatedRisks.length}</div>
+            </div>
 
-  <div className="metric-card">
-    <h3>No Owner</h3>
-    <div className="metric-value">{risksWithoutOwners.length}</div>
-  </div>
+            <div className="metric-card">
+              <h3>No Owner</h3>
+              <div className="metric-value">{risksWithoutOwners.length}</div>
+            </div>
 
-  <div className="metric-card">
-    <h3>Worsening</h3>
-    <div className="metric-value">{worseningRisks.length}</div>
-  </div>
+            <div className="metric-card">
+              <h3>Worsening</h3>
+              <div className="metric-value">{worseningRisks.length}</div>
+            </div>
 
-  <div className="metric-card">
-    <h3>Executive Alerts</h3>
-    <div className="metric-value">{executiveAlerts.length}</div>
-  </div>
+            <div className="metric-card">
+              <h3>Executive Alerts</h3>
+              <div className="metric-value">{executiveAlerts.length}</div>
+            </div>
 
-  <div className="metric-card">
-    <h3>Health Score</h3>
-    <div className="metric-value">
-      {executiveHealthScore}
-    </div>
-  </div>
-</div>
+            <div className="metric-card">
+              <h3>Health Score</h3>
+              <div className="metric-value">{executiveHealthScore}</div>
+            </div>
+          </div>
 
           <div className="data-card">
             <div className="section-header-row">
@@ -1195,111 +1223,108 @@ return (
             </div>
           </div>
 
-                    <div className="data-card">
-            <h2>Suggested Risks</h2>
-            <p>
-              Risks identified from contracts, schedules, constraints, project
-              health reviews, and other SentinelOS sources.
-            </p>
+          <div className="data-card">
+            <div className="section-header-row">
+              <div>
+                <div className="data-card">
+  <h2>Suggested Risks</h2>
 
-            <table className="data-table suggested-risks-table">
-              <thead>
-                <tr>
-                  <th>Risk</th>
-                  <th>Category</th>
-                  <th>Source</th>
-                  <th>Confidence</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
+  <p>
+    Risks identified from contracts, schedules,
+    constraints, project health reviews,
+    and other SentinelOS sources.
+  </p>
 
-              <tbody>
-                {suggestedRisks.map((risk) => (
-                  <tr key={risk.id}>
-                    <td>{risk.risk}</td>
-                    <td>{risk.category}</td>
-                    <td>{risk.source}</td>
-                    <td>{risk.confidence}</td>
+  <table className="data-table">
+    <thead>
+      <tr>
+        <th>Risk</th>
+        <th>Category</th>
+        <th>Source</th>
+        <th>Confidence</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
 
-                    <td>
-                      <button
-                        className="primary-button"
-                        onClick={() => {
-                          setRiskPlaybook([
-                            ...riskPlaybook,
-                            {
-                              id: crypto.randomUUID(),
-                              title: risk.risk,
-                              category: risk.category,
-                              sourceType: risk.source,
-                              source: risk.source,
-                              linkedMilestone: "",
-                              probability: risk.probability || 3,
-                              impact: risk.impact || 3,
-                              score:
-                                (risk.probability || 3) *
-                                (risk.impact || 3),
-                              owner: risk.owner || "Project Executive",
-                              status: "Open",
-                              trend: "Stable",
-                              mitigation:
-                                risk.mitigation ||
-                                getDefaultMitigation(
-                                  risk.risk,
-                                  risk.category,
-                                  risk.source
-                                ),
-                              trigger:
-                                risk.trigger ||
-                                getDefaultTrigger(
-                                  risk.risk,
-                                  risk.category,
-                                  risk.source
-                                ),
-                              createdAt: new Date().toISOString(),
-                              updatedAt: new Date().toISOString(),
-                              history: [
-                                {
-                                  date: new Date().toISOString(),
-                                  action: "Risk Created",
-                                },
-                              ],
-                            },
-                          ]);
+    <tbody>
+      {suggestedRisks.map((risk) => (
+        <tr key={risk.id}>
+          <td>{risk.risk}</td>
+          <td>{risk.category}</td>
+          <td>{risk.source}</td>
+          <td>{risk.confidence}</td>
 
-                          setSuggestedRisks(
-                            suggestedRisks.filter(
-                              (item) => item.id !== risk.id
-                            )
-                          );
-                        }}
-                      >
-                        Accept
-                      </button>
+          <td>
+            <button
+              className="primary-button"
+              onClick={() => {
+                setRiskPlaybook([
+  ...riskPlaybook,
+                  {
+  id: crypto.randomUUID(),
+  title: risk.risk,
+  category: risk.category,
+  sourceType: risk.source,
+  source: risk.source,
+  linkedMilestone: "",
+  probability: risk.probability || 3,
+  impact: risk.impact || 3,
+  score: (risk.probability || 3) * (risk.impact || 3),
+  owner: risk.owner || "Project Executive",
+  status: "Open",
+  trend: "Stable",
+  mitigation:
+    risk.mitigation ||
+    getDefaultMitigation(risk.risk, risk.category, risk.source),
+  trigger:
+    risk.trigger ||
+    getDefaultTrigger(risk.risk, risk.category, risk.source),
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+  history: [
+  {
+    date: new Date().toISOString(),
+    action: "Risk Created",
+  },
+],
+},
+                ]);
 
-                      <button
-                        className="danger-button"
-                        onClick={() =>
-                          setSuggestedRisks(
-                            suggestedRisks.filter(
-                              (item) => item.id !== risk.id
-                            )
-                          )
-                        }
-                      >
-                        Reject
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                setSuggestedRisks(
+                  suggestedRisks.filter(
+                    (item) => item.id !== risk.id
+                  )
+                );
+              }}
+            >
+              Accept
+            </button>
 
-            <h2>Add Risk</h2>
-            <p>
-              Manually add a risk when it has not yet been generated by a source
-              document or Sentinel module.
-            </p>
+            <button
+              className="danger-button"
+              onClick={() =>
+                setSuggestedRisks(
+                  suggestedRisks.filter(
+                    (item) => item.id !== risk.id
+                  )
+                )
+              }
+            >
+              Reject
+            </button>
+          </td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+</div>
+                <h2>Add Risk</h2>
+                <p>
+                  Manually add a risk when it has not yet been generated by a
+                  source document or Sentinel module.
+                </p>
+              </div>
+            </div>
 
             <form className="form-grid" onSubmit={addRisk}>
               <label>
@@ -1384,30 +1409,12 @@ return (
 
               <label>
                 Owner
-                <select
+                <input
                   name="owner"
                   value={riskForm.owner}
                   onChange={handleFormChange}
-                >
-                  <option value="">Unassigned</option>
-
-                  {teamMembers.map((member) => {
-                    const memberName =
-                      member.name ||
-                      member.fullName ||
-                      member.email ||
-                      "Unnamed";
-
-                    return (
-                      <option
-                        key={member.id || member.email || memberName}
-                        value={memberName}
-                      >
-                        {memberName}
-                      </option>
-                    );
-                  })}
-                </select>
+                  placeholder="Risk owner"
+                />
               </label>
 
               <label>
@@ -1484,13 +1491,11 @@ return (
   <tr>
     <th>Risk</th>
     <th>Category</th>
-    <th>Source</th>
     <th>Score</th>
     <th>Level</th>
     <th>Trend</th>
     <th>Status</th>
     <th>Owner</th>
-    <th>Trigger / Context</th>
     <th>Linked Milestone</th>
     <th>Baseline Date</th>
     <th>Slip Days</th>
@@ -1501,195 +1506,279 @@ return (
               <tbody>
                 {riskPlaybook.length === 0 ? (
                   <tr>
-                    <td colSpan="14">No risks added yet.</td>
+                    <td colSpan="13">No risks added yet.</td>
                   </tr>
                 ) : (
                   riskPlaybook.map((risk) => (
-                    <tr key={risk.id}>
-                      <td>
-                        <input
-                          value={risk.title}
-                          onChange={(e) =>
-                            updateRisk(risk.id, "title", e.target.value)
-                          }
-                        />
-                      </td>
+                    <React.Fragment key={risk.id}>
+                      <tr>
+                        <td>
+                          <button
+                            type="button"
+                            className="risk-expand-button"
+                            onClick={() =>
+                              setExpandedRiskId(
+                                expandedRiskId === risk.id ? null : risk.id
+                              )
+                            }
+                          >
+                            {expandedRiskId === risk.id ? "▼" : "▶"} {risk.title}
+                          </button>
+                        </td>
 
-                      <td>
-                        <select
-                          value={risk.category}
-                          onChange={(e) =>
-                            updateRisk(risk.id, "category", e.target.value)
-                          }
-                        >
-                          {riskCategories.map((category) => (
-                            <option key={category} value={category}>
-                              {category}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
+                        <td>
+                          <select
+                            value={risk.category}
+                            onChange={(e) =>
+                              updateRisk(risk.id, "category", e.target.value)
+                            }
+                          >
+                            {riskCategories.map((category) => (
+                              <option key={category} value={category}>
+                                {category}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
 
-                     
-                      <td>
-                        <input
-                          value={risk.source}
-                          onChange={(e) =>
-                            updateRisk(risk.id, "source", e.target.value)
-                          }
-                        />
-                      </td>
+                        
 
-                     
-                      
+                        <td>{risk.score}</td>
 
-                      <td>{risk.score}</td>
+                        <td>
+                          <span className={getRiskClass(risk.score)}>
+                            {getRiskLevel(risk.score)}
+                          </span>
+                        </td>
 
-                      <td>
-                        <span className={getRiskClass(risk.score)}>
-                          {getRiskLevel(risk.score)}
-                        </span>
-                      </td>
+                        <td>
+                          <select
+                            value={calculateRiskTrend(risk)}
+                            onChange={(e) =>
+                              updateRisk(risk.id, "trend", e.target.value)
+                            }
+                          >
+                            {riskTrends.map((trend) => (
+                              <option key={trend} value={trend}>
+                                {trend}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
 
-                      <td>
-                        <select
-                          value={calculateRiskTrend(risk)}
-                          onChange={(e) =>
-                            updateRisk(risk.id, "trend", e.target.value)
-                          }
-                        >
-                          {riskTrends.map((trend) => (
-                            <option key={trend} value={trend}>
-                              {trend}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
+                        <td>
+                          <select
+                            value={risk.status}
+                            onChange={(e) =>
+                              updateRisk(risk.id, "status", e.target.value)
+                            }
+                          >
+                            {riskStatuses.map((status) => (
+                              <option key={status} value={status}>
+                                {status}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
 
-                      <td>
-                        <select
-                          value={risk.status}
-                          onChange={(e) =>
-                            updateRisk(risk.id, "status", e.target.value)
-                          }
-                        >
-                          {riskStatuses.map((status) => (
-                            <option key={status} value={status}>
-                              {status}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
+                        <td>
+                          <select
+                            value={risk.owner || ""}
+                            onChange={(e) =>
+                              updateRisk(risk.id, "owner", e.target.value)
+                            }
+                          >
+                            <option value="">Unassigned</option>
 
-                      <td>
-  <select
-    value={risk.owner || ""}
-    onChange={(e) =>
-      updateRisk(risk.id, "owner", e.target.value)
-    }
-  >
-    <option value="">Unassigned</option>
+                            {teamMembers.map((member) => {
+                              const memberName =
+                                member.name ||
+                                member.fullName ||
+                                member.email ||
+                                "Unnamed";
 
-    {teamMembers.map((member) => {
-      const memberName =
-        member.name || member.fullName || member.email || "Unnamed";
+                              return (
+                                <option
+                                  key={member.id || member.email || memberName}
+                                  value={memberName}
+                                >
+                                  {memberName}
+                                </option>
+                              );
+                            })}
+                          </select>
+                        </td>
 
-      return (
-        <option
-          key={member.id || member.email || memberName}
-          value={memberName}
-        >
-          {memberName}
-        </option>
-      );
-    })}
-  </select>
-</td>
+                        
 
-                                            <td>
-                        <textarea
-                          value={risk.trigger}
-                          onChange={(e) =>
-                            updateRisk(risk.id, "trigger", e.target.value)
-                          }
-                        />
-                      </td>
-                      <td>
-  <select
-    value={risk.linkedMilestone || ""}
-    onChange={(e) =>
-      updateRisk(
-        risk.id,
-        "linkedMilestone",
-        e.target.value
-      )
-    }
-  >
-    <option value="">Not Linked</option>
+                        <td>
+                          <select
+                            value={risk.linkedMilestone || ""}
+                            onChange={(e) =>
+                              updateRisk(risk.id, "linkedMilestone", e.target.value)
+                            }
+                          >
+                            <option value="">Not Linked</option>
 
-    {milestones.map((milestone) => (
-      <option
-        key={milestone.id}
-        value={milestone.name}
-      >
-        {milestone.name}
-      </option>
-    ))}
-  </select>
-</td>
-<td>
-  {risk.baselineMilestoneDate || "-"}
-</td>
-<td>
-  {getLinkedMilestoneSlipDays(risk) > 0
-    ? `${getLinkedMilestoneSlipDays(risk)} days`
-    : "-"}
-</td>
+                            {milestones.map((milestone) => (
+                              <option key={milestone.id} value={milestone.name}>
+                                {milestone.name}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
 
+                        <td>{risk.baselineMilestoneDate || "-"}</td>
 
-                      <td>
-                        <button
-                          type="button"
-                          className="danger-button"
-                          onClick={() => deleteRisk(risk.id)}
-                        >
-                          Delete
-                        </button>
-                      </td>
-                    </tr>
+                        <td>
+                          {getLinkedMilestoneSlipDays(risk) > 0
+                            ? `${getLinkedMilestoneSlipDays(risk)} days`
+                            : "-"}
+                        </td>
+
+                        <td>
+                          <button
+                            type="button"
+                            className="danger-button"
+                            onClick={() => deleteRisk(risk.id)}
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+
+                      {expandedRiskId === risk.id && (
+                        <tr className="risk-detail-row">
+                          <td colSpan="11">
+                            <div className="risk-detail-panel">
+                              <div className="risk-detail-section">
+                                <h4>Risk Analysis</h4>
+
+                                <div className="risk-detail-grid risk-analysis-grid">
+                                  <label>
+                                    Probability
+                                    <select
+                                      value={risk.probability}
+                                      onChange={(e) =>
+                                        updateRisk(risk.id, "probability", e.target.value)
+                                      }
+                                    >
+                                      {[1, 2, 3, 4, 5].map((value) => (
+                                        <option key={value} value={value}>
+                                          {value}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </label>
+
+                                  <label>
+                                    Impact
+                                    <select
+                                      value={risk.impact}
+                                      onChange={(e) =>
+                                        updateRisk(risk.id, "impact", e.target.value)
+                                      }
+                                    >
+                                      {[1, 2, 3, 4, 5].map((value) => (
+                                        <option key={value} value={value}>
+                                          {value}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </label>
+
+                                                                   
+                                </div>
+                              </div>
+
+                              <div className="risk-detail-section">
+                                <h4>Risk Source</h4>
+
+                                <div className="risk-detail-grid risk-source-grid">
+                                  <label>
+                                    Source Type
+                                    <select
+                                      value={risk.sourceType || "Manual"}
+                                      onChange={(e) =>
+                                        updateRisk(risk.id, "sourceType", e.target.value)
+                                      }
+                                    >
+                                      {sourceTypes.map((sourceType) => (
+                                        <option key={sourceType} value={sourceType}>
+                                          {sourceType}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </label>
+
+                                  <label>
+                                    Source
+                                    <input
+                                      value={risk.source || ""}
+                                      onChange={(e) =>
+                                        updateRisk(risk.id, "source", e.target.value)
+                                      }
+                                    />
+                                  </label>
+                                </div>
+                              </div>
+
+                              <div className="risk-detail-section">
+                                <h4>Mitigation Plan</h4>
+
+                                <textarea
+                                  className="risk-detail-textarea"
+                                  value={risk.mitigation || ""}
+                                  onChange={(e) =>
+                                    updateRisk(risk.id, "mitigation", e.target.value)
+                                  }
+                                />
+                              </div>
+
+                              <div className="risk-detail-section">
+                                <h4>Trigger / Context</h4>
+
+                                <textarea
+                                  className="risk-detail-textarea"
+                                  value={risk.trigger || ""}
+                                  onChange={(e) =>
+                                    updateRisk(risk.id, "trigger", e.target.value)
+                                  }
+                                />
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
                   ))
                 )}
               </tbody>
-                       </table>
-                    </div>
-
+            </table>
+          </div>
+<label>
+  Filter by Risk
+  <select
+    value={historyRiskFilter}
+    onChange={(e) => setHistoryRiskFilter(e.target.value)}
+  >
+    <option>All Risks</option>
+    {riskPlaybook.map((risk) => (
+      <option key={risk.id} value={risk.title}>
+        {risk.title}
+      </option>
+    ))}
+  </select>
+</label>
           <div className="data-card">
             <div className="section-header-row">
               <div>
                 <h2>Risk History</h2>
-    <p>
-      Timeline of key risk events, status changes, and trend changes.
-    </p>
-  </div>
-
-  <div className="risk-history-filter">
-  <label>
-    Filter by Risk
-    <select
-      value={historyRiskFilter}
-      onChange={(e) => setHistoryRiskFilter(e.target.value)}
-    >
-      <option>All Risks</option>
-
-      {riskPlaybook.map((risk) => (
-        <option key={risk.id} value={risk.title}>
-          {risk.title}
-        </option>
-      ))}
-    </select>
-  </label>
-</div>
-</div>
+                <p>
+                  Timeline of key risk events, status changes, and trend changes.
+                </p>
+              </div>
+            </div>
 
             {riskPlaybook.length === 0 ? (
               <p>No risk history has been created yet.</p>
@@ -1726,7 +1815,7 @@ return (
         </>
       )}
     </div>
-      );
+  );
+}
 
-    }
-      export default RiskIntegratorOS;
+export default RiskIntegratorOS;
