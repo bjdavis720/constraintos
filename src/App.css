@@ -3458,3 +3458,125 @@ textarea.form-input {
   width: 110px;
   text-align: center;
 }
+/* RiskIntegratorOS Playbook Presentation Cleanup */
+
+.risk-playbook-table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+
+.risk-playbook-table th {
+  white-space: nowrap;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.risk-playbook-table td {
+  vertical-align: middle;
+}
+
+.risk-playbook-table th,
+.risk-playbook-table td {
+  padding: 14px 10px;
+}
+
+.risk-playbook-table th:nth-child(1),
+.risk-playbook-table td:nth-child(1) {
+  width: 13%;
+}
+
+.risk-playbook-table th:nth-child(2),
+.risk-playbook-table td:nth-child(2) {
+  width: 8%;
+}
+
+.risk-playbook-table th:nth-child(3),
+.risk-playbook-table td:nth-child(3) {
+  width: 10%;
+}
+
+.risk-playbook-table th:nth-child(4),
+.risk-playbook-table td:nth-child(4) {
+  width: 5%;
+  text-align: center;
+}
+
+.risk-playbook-table th:nth-child(5),
+.risk-playbook-table td:nth-child(5) {
+  width: 8%;
+  text-align: center;
+}
+
+.risk-playbook-table th:nth-child(6),
+.risk-playbook-table td:nth-child(6) {
+  width: 7%;
+}
+
+.risk-playbook-table th:nth-child(7),
+.risk-playbook-table td:nth-child(7) {
+  width: 7%;
+}
+
+.risk-playbook-table th:nth-child(8),
+.risk-playbook-table td:nth-child(8) {
+  width: 9%;
+}
+
+.risk-playbook-table th:nth-child(9),
+.risk-playbook-table td:nth-child(9) {
+  width: 14%;
+}
+
+.risk-playbook-table th:nth-child(10),
+.risk-playbook-table td:nth-child(10) {
+  width: 12%;
+}
+
+.risk-playbook-table th:nth-child(11),
+.risk-playbook-table td:nth-child(11) {
+  width: 7%;
+  text-align: center;
+}
+
+.risk-playbook-table th:nth-child(12),
+.risk-playbook-table td:nth-child(12) {
+  width: 6%;
+  text-align: center;
+}
+
+.risk-playbook-table th:nth-child(13),
+.risk-playbook-table td:nth-child(13) {
+  width: 5%;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.risk-playbook-table .status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 86px;
+  width: auto;
+  white-space: nowrap;
+  line-height: 1;
+  padding: 7px 12px;
+}
+
+.risk-playbook-table .danger-button {
+  white-space: nowrap;
+  min-width: 76px;
+  padding: 8px 12px;
+}
+
+.risk-playbook-table input,
+.risk-playbook-table select,
+.risk-playbook-table textarea {
+  font-size: 13px;
+}
+
+.risk-playbook-table textarea {
+  min-width: 0 !important;
+  width: 100%;
+  min-height: 64px;
+}

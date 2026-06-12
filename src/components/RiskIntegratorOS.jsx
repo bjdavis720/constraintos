@@ -79,6 +79,14 @@ milestones = [],
   const risksWithoutOwners = activeRisks.filter((risk) => !risk.owner);
   const worseningRisks = activeRisks.filter((risk) => risk.trend === "Worsening");
   const executiveAlerts = getExecutiveAlerts();
+  const executiveHealthScore = Math.max(
+  0,
+  100 -
+    criticalRisks.length * 10 -
+    highRisks.length * 5 -
+    worseningRisks.length * 3 -
+    risksWithoutOwners.length * 2
+);
   
   const historyRows = riskPlaybook
   .filter(
@@ -116,6 +124,14 @@ historyRows.sort(
     if (score >= 6) return "status-pill warning";
     return "status-pill on-track";
   }
+  function getRiskAgeDays(risk) {
+  if (!risk.createdAt) return 0;
+
+  return Math.ceil(
+    (new Date() - new Date(risk.createdAt)) /
+      (1000 * 60 * 60 * 24)
+  );
+}
   
 
   function handleFormChange(e) {
@@ -921,26 +937,48 @@ return (
       ) : (
         <>
           <div className="metric-grid">
-            <div className="metric-card">
-              <h3>Active Risks</h3>
-              <div className="metric-value">{activeRisks.length}</div>
-            </div>
+  <div className="metric-card">
+    <h3>Active Risks</h3>
+    <div className="metric-value">{activeRisks.length}</div>
+  </div>
 
-            <div className="metric-card">
-              <h3>Critical Risks</h3>
-              <div className="metric-value">{criticalRisks.length}</div>
-            </div>
+  <div className="metric-card">
+    <h3>Critical Risks</h3>
+    <div className="metric-value">{criticalRisks.length}</div>
+  </div>
 
-            <div className="metric-card">
-              <h3>No Owner</h3>
-              <div className="metric-value">{risksWithoutOwners.length}</div>
-            </div>
+  <div className="metric-card">
+    <h3>High Risks</h3>
+    <div className="metric-value">{highRisks.length}</div>
+  </div>
 
-            <div className="metric-card">
-              <h3>Worsening</h3>
-              <div className="metric-value">{worseningRisks.length}</div>
-            </div>
-          </div>
+  <div className="metric-card">
+    <h3>Escalated</h3>
+    <div className="metric-value">{escalatedRisks.length}</div>
+  </div>
+
+  <div className="metric-card">
+    <h3>No Owner</h3>
+    <div className="metric-value">{risksWithoutOwners.length}</div>
+  </div>
+
+  <div className="metric-card">
+    <h3>Worsening</h3>
+    <div className="metric-value">{worseningRisks.length}</div>
+  </div>
+
+  <div className="metric-card">
+    <h3>Executive Alerts</h3>
+    <div className="metric-value">{executiveAlerts.length}</div>
+  </div>
+
+  <div className="metric-card">
+    <h3>Health Score</h3>
+    <div className="metric-value">
+      {executiveHealthScore}
+    </div>
+  </div>
+</div>
 
           <div className="data-card">
             <div className="section-header-row">
@@ -1003,6 +1041,7 @@ return (
                     <th>Level</th>
                     <th>Trend</th>
                     <th>Status</th>
+                    <th>Days Open</th>
                     <th>Owner</th>
                   </tr>
                 </thead>
@@ -1019,6 +1058,7 @@ return (
                       </td>
                       <td>{risk.trend || "Stable"}</td>
                       <td>{risk.status}</td>
+                      <td>{getRiskAgeDays(risk)}</td>
                       <td>{risk.owner || "Unassigned"}</td>
                     </tr>
                   ))}
@@ -1439,29 +1479,24 @@ return (
               </div>
             </div>
 
-            <table className="data-table">
+            <table className="data-table risk-playbook-table">
               <thead>
-                <tr>
-                  <th>Risk</th>
-                  <th>Category</th>
-                  <th>Source Type</th>
-                  <th>Source</th>
-                  <th>Probability</th>
-                  <th>Impact</th>
-                  <th>Score</th>
-                  <th>Level</th>
-                  <th>Trend</th>
-                  <th>Status</th>
-    
-                  <th>Mitigation</th>
-                  <th>Trigger</th>
-<th>Linked Milestone</th>
-<th>Baseline Date</th>
-<th>Slip Days</th>
-<th>Recommended Action</th>
-<th>Actions</th>
-                </tr>
-              </thead>
+  <tr>
+    <th>Risk</th>
+    <th>Category</th>
+    <th>Source</th>
+    <th>Score</th>
+    <th>Level</th>
+    <th>Trend</th>
+    <th>Status</th>
+    <th>Owner</th>
+    <th>Trigger / Context</th>
+    <th>Linked Milestone</th>
+    <th>Baseline Date</th>
+    <th>Slip Days</th>
+    <th></th>
+  </tr>
+</thead>
 
               <tbody>
                 {riskPlaybook.length === 0 ? (
@@ -1495,21 +1530,7 @@ return (
                         </select>
                       </td>
 
-                      <td>
-                        <select
-                          value={risk.sourceType || "Manual"}
-                          onChange={(e) =>
-                            updateRisk(risk.id, "sourceType", e.target.value)
-                          }
-                        >
-                          {sourceTypes.map((sourceType) => (
-                            <option key={sourceType} value={sourceType}>
-                              {sourceType}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-
+                     
                       <td>
                         <input
                           value={risk.source}
@@ -1519,35 +1540,8 @@ return (
                         />
                       </td>
 
-                      <td>
-                        <select
-                          value={risk.probability}
-                          onChange={(e) =>
-                            updateRisk(risk.id, "probability", e.target.value)
-                          }
-                        >
-                          {[1, 2, 3, 4, 5].map((value) => (
-                            <option key={value} value={value}>
-                              {value}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-
-                      <td>
-                        <select
-                          value={risk.impact}
-                          onChange={(e) =>
-                            updateRisk(risk.id, "impact", e.target.value)
-                          }
-                        >
-                          {[1, 2, 3, 4, 5].map((value) => (
-                            <option key={value} value={value}>
-                              {value}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
+                     
+                      
 
                       <td>{risk.score}</td>
 
@@ -1612,16 +1606,7 @@ return (
   </select>
 </td>
 
-                      <td>
-                        <textarea
-                          value={risk.mitigation}
-                          onChange={(e) =>
-                            updateRisk(risk.id, "mitigation", e.target.value)
-                          }
-                        />
-                      </td>
-
-                      <td>
+                                            <td>
                         <textarea
                           value={risk.trigger}
                           onChange={(e) =>
@@ -1660,9 +1645,7 @@ return (
     ? `${getLinkedMilestoneSlipDays(risk)} days`
     : "-"}
 </td>
-<td>
-  {getRiskRecommendation(risk)}
-</td>
+
 
                       <td>
                         <button
