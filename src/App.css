@@ -4610,3 +4610,153 @@ textarea.form-input {
     min-height: auto;
   }
 }
+.health-executive-layout {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+.health-executive-sidebar {
+  position: sticky;
+  top: 24px;
+  min-height: calc(100vh - 48px);
+  padding: 20px 14px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #061f3d 0%, #031324 100%);
+  color: white;
+  box-shadow: 0 18px 40px rgba(0, 24, 64, 0.22);
+}
+
+.health-sidebar-section {
+  padding-bottom: 18px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.health-sidebar-section:last-child {
+  border-bottom: none;
+}
+
+.health-sidebar-heading {
+  margin: 0 0 10px;
+  padding: 0 8px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.62);
+}
+
+.health-nav-item,
+.health-home-button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 4px 0;
+  padding: 12px 12px;
+  border: none;
+  border-radius: 12px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.86);
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.health-home-button {
+  margin-bottom: 20px;
+  background: rgba(255, 255, 255, 0.12);
+  font-weight: 900;
+}
+
+.health-nav-item:hover,
+.health-home-button:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+.health-executive-main {
+  min-width: 0;
+}
+
+@media (max-width: 1100px) {
+  .health-executive-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .health-executive-sidebar {
+    position: static;
+    min-height: auto;
+  }
+}
+.project-health-issues-card {
+  overflow-x: hidden;
+}
+
+.project-health-issues-card .issues-table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+.project-health-issues-card .issues-table th,
+.project-health-issues-card .issues-table td {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.project-health-issues-card .issues-table th:nth-child(1),
+.project-health-issues-card .issues-table td:nth-child(1) {
+  width: 24%;
+}
+
+.project-health-issues-card .issues-table th:nth-child(2),
+.project-health-issues-card .issues-table td:nth-child(2) {
+  width: 22%;
+}
+
+.project-health-issues-card .issues-table th:nth-child(3),
+.project-health-issues-card .issues-table td:nth-child(3) {
+  width: 8%;
+}
+
+.project-health-issues-card .issues-table th:nth-child(4),
+.project-health-issues-card .issues-table td:nth-child(4) {
+  width: 10%;
+}
+
+.project-health-issues-card .issues-table th:nth-child(5),
+.project-health-issues-card .issues-table td:nth-child(5) {
+  width: 12%;
+}
+
+.project-health-issues-card .issues-table th:nth-child(6),
+.project-health-issues-card .issues-table td:nth-child(6) {
+  width: 10%;
+}
+
+.project-health-issues-card .issues-table th:nth-child(7),
+.project-health-issues-card .issues-table td:nth-child(7) {
+  width: 14%;
+}
+
+.project-health-issues-card .issues-table button {
+  white-space: normal;
+}
+.project-health-todos-card table {
+  width: 100%;
+  table-layout: auto;
+}
+
+.project-health-todos-card th:last-child,
+.project-health-todos-card td:last-child {
+  width: 140px;
+  min-width: 140px;
+  text-align: center;
+}
+
+.project-health-todos-card td:last-child button {
+  min-width: 110px;
+  white-space: nowrap;
+}

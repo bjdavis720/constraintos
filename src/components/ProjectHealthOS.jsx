@@ -6,7 +6,7 @@ function ProjectHealthOS({
   project,
   projectHealthOS,
   updateProjectHealthOS,
-  teamMembers,
+  teamMembers = [],
 }) {
   const healthData = projectHealthOS || {
     reviewItems: [],
@@ -340,6 +340,12 @@ function archiveHealthIssue(id) {
     ),
   });
 }
+function scrollToHealthSection(sectionId) {
+  document.getElementById(sectionId)?.scrollIntoView({
+    behavior: "smooth",
+    block: "start",
+  });
+}
   return (
     <div className="page project-health-os-page">
       <ModuleHeader
@@ -349,8 +355,63 @@ function archiveHealthIssue(id) {
   description="Project health reviews, executive attention, risk trends, and accountability tracking."
 />
 
-      <div className="data-card">
-        <h2>Add Review Item</h2>
+<div className="health-executive-layout">
+  <aside className="health-executive-sidebar">
+    <button
+      type="button"
+      className="health-home-button"
+      onClick={() =>
+        window.dispatchEvent(new CustomEvent("sentinel:navigate-home"))
+      }
+    >
+      🛡️ SentinelOS Home
+    </button>
+<div className="health-sidebar-section">
+      <div className="health-sidebar-heading">Setup</div>
+
+      <button
+        type="button"
+        className="health-nav-item"
+        onClick={() => scrollToHealthSection("add-review-item")}
+      >
+        ➕ Add / Import Items
+      </button>
+    </div>
+    <div className="health-sidebar-section">
+      <div className="health-sidebar-heading">Health</div>
+
+      <button
+        type="button"
+        className="health-nav-item"
+        onClick={() => scrollToHealthSection("review-items")}
+      >
+        💚 Review Items
+      </button>
+
+      <button
+        type="button"
+        className="health-nav-item"
+        onClick={() => scrollToHealthSection("health-review-issues")}
+      >
+        ⚠️ Health Issues
+      </button>
+
+      <button
+        type="button"
+        className="health-nav-item"
+        onClick={() => scrollToHealthSection("project-health-todos")}
+      >
+        ✅ Health To-Dos
+      </button>
+    </div>
+
+    
+  </aside>
+
+  <main className="health-executive-main">
+
+      <div id="add-review-item" className="data-card">
+  <h2>Add Review Item</h2>
 
         <form className="entry-form milestone-form" onSubmit={addReviewItem}>
   <div className="form-group">
@@ -412,7 +473,7 @@ function archiveHealthIssue(id) {
 
       
 
-  <div className="data-card project-health-review-card">
+  <div id="review-items" className="data-card project-health-review-card">
   <div className="section-header-row">
     <h2>Review Items</h2>
   </div>
@@ -540,7 +601,7 @@ function archiveHealthIssue(id) {
   })}
 </div>
 
-      <div className="data-card project-health-issues-card">
+      <div id="health-review-issues" className="data-card project-health-issues-card">
   <h2>Health Review Issues</h2>
 
   <table className="data-table issues-table">
@@ -760,7 +821,7 @@ function archiveHealthIssue(id) {
   </table>
 </div>
 
-      <div className="data-card project-health-todos-card">
+      <div id="project-health-todos" className="data-card project-health-todos-card">
         <h2>ProjectHealthOS To-Dos</h2>
 
         <table className="data-table project-health-table">
@@ -808,7 +869,9 @@ function archiveHealthIssue(id) {
           </tbody>
         </table>
       </div>
-    </div>
+        </main>
+  </div>
+</div>
   );
 }
 

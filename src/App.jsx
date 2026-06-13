@@ -952,7 +952,7 @@ useEffect(() => {
 
   return (
     <div className="app">
-      {!["RiskIntegratorOS", "Revenue Forecast"].includes(activePage) && (
+      {!["RiskIntegratorOS", "Revenue Forecast", "Project Health Reviews"].includes(activePage) && (
   <Sidebar
     activePage={activePage}
     setActivePage={handleSetActivePage}
@@ -983,6 +983,7 @@ useEffect(() => {
       todos={todos}
       updateCurrentProjectData={updateCurrentProjectData}
       permissions={permissions}
+      teamMembers={teamMembers}
     />
   ) : (
     renderNoProjectSelected()
