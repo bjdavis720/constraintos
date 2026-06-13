@@ -924,6 +924,22 @@ setTodoForm({
     setDashboardFilter("");
     setActivePage(page);
   }
+  function handleSetActivePage(page) {
+  setDashboardFilter("");
+  setActivePage(page);
+}
+
+useEffect(() => {
+  function goHome() {
+    setActivePage("SentinelOS Home");
+  }
+
+  window.addEventListener("sentinel:navigate-home", goHome);
+
+  return () => {
+    window.removeEventListener("sentinel:navigate-home", goHome);
+  };
+}, []);
 
   function renderNoProjectSelected() {
     return (

@@ -63,9 +63,10 @@ milestones = [],
     status: "Open",
     linkedMilestone: "",
   });
-  const [historyRiskFilter, setHistoryRiskFilter] = useState("All Risks");
-  const [expandedRiskId, setExpandedRiskId] = useState(null);
-  const [showAddRiskForm, setShowAddRiskForm] = useState(false);
+ 
+const [historyRiskFilter, setHistoryRiskFilter] = useState("All Risks");
+const [expandedRiskId, setExpandedRiskId] = useState(null);
+const [showAddRiskForm, setShowAddRiskForm] = useState(false);
 
   const activeRisks = riskPlaybook.filter(
     (risk) => risk.status !== "Closed" && risk.status !== "Retired"
@@ -986,6 +987,12 @@ if (milestoneSlipDays > 0) {
 
   return risk.trend || "Stable";
 }
+function scrollToSection(sectionId) {
+  document.getElementById(sectionId)?.scrollIntoView({
+    behavior: "smooth",
+    block: "start",
+  });
+}
 function getConstraintAge(constraint) {
   const createdDate = constraint.createdAt
     ? new Date(constraint.createdAt)
@@ -1019,9 +1026,100 @@ function getConstraintAge(constraint) {
           </p>
         </div>
       ) : (
-        <>
-          <div className="executive-kpi-grid">
-  <div className="executive-kpi-card">
+  <div className="risk-executive-layout">
+    <aside className="risk-executive-sidebar">
+      <button
+  type="button"
+  className="risk-home-button"
+  onClick={() => window.dispatchEvent(new CustomEvent("sentinel:navigate-home"))}
+>
+  🛡️ SentinelOS Home
+</button>
+      <div className="risk-sidebar-section">
+        <div className="risk-sidebar-heading">Executive</div>
+
+        <button
+          type="button"
+          className="risk-nav-item"
+          onClick={() => scrollToSection("executive-dashboard")}
+        >
+          📊 Executive Dashboard
+        </button>
+
+        <button
+          type="button"
+          className="risk-nav-item"
+          onClick={() => scrollToSection("executive-brief")}
+        >
+          📋 Executive Brief
+        </button>
+
+        <button
+          type="button"
+          className="risk-nav-item"
+          onClick={() => scrollToSection("health-score")}
+        >
+          💚 Health Score
+        </button>
+      </div>
+
+      <div className="risk-sidebar-section">
+        <div className="risk-sidebar-heading">Risk Management</div>
+
+        <button
+          type="button"
+          className="risk-nav-item"
+          onClick={() => scrollToSection("risk-playbook")}
+        >
+          🛡️ Risk Playbook
+        </button>
+
+        <button
+          type="button"
+          className="risk-nav-item"
+          onClick={() => scrollToSection("mitigation-tracking")}
+        >
+          📈 Mitigation Tracking
+        </button>
+
+        <button
+          type="button"
+          className="risk-nav-item"
+          onClick={() => scrollToSection("audit-log")}
+        >
+          🕘 Risk History
+        </button>
+      </div>
+
+      <div className="risk-sidebar-section">
+        <div className="risk-sidebar-heading">Intelligence</div>
+
+        <button
+          type="button"
+          className="risk-nav-item"
+          onClick={() => scrollToSection("risk-sources")}
+        >
+          📁 Risk Sources
+        </button>
+
+        <button
+          type="button"
+          className="risk-nav-item"
+          onClick={() => scrollToSection("contract-intelligence")}
+        >
+          📄 Contract Intelligence
+        </button>
+      </div>
+
+     
+    </aside>
+
+    <main className="risk-executive-main">
+      <div
+  id="executive-dashboard"
+  className="executive-kpi-grid"
+>
+        <div className="executive-kpi-card">
     <span className="kpi-icon">🛡️</span>
     <div>
       <h3>Active Risks</h3>
@@ -1095,10 +1193,141 @@ function getConstraintAge(constraint) {
   </div>
 </div>
 
-          <div className="data-card">
+<div id="health-score" className="data-card health-score-section">
+  <div className="section-header-row">
+    <div>
+      <h2>Health Score</h2>
+      <p>Executive risk health based on critical risks, high risks, worsening trends, and owner gaps.</p>
+    </div>
+  </div>
+
+  <div className="health-score-content">
+    <div
+      className="health-gauge"
+      style={{
+        background: `conic-gradient(#22c55e ${executiveHealthScore * 3.6}deg, #e5e7eb 0deg)`,
+      }}
+    >
+      <div className="health-gauge-inner">
+        <strong>{executiveHealthScore}</strong>
+        <span>
+          {executiveHealthScore >= 80
+            ? "Good"
+            : executiveHealthScore >= 60
+            ? "Watch"
+            : "Critical"}
+        </span>
+      </div>
+    </div>
+
+    <div className="health-score-details">
+      <div>
+        <span>Target</span>
+        <strong>80+</strong>
+      </div>
+
+      <div>
+        <span>Critical Risks</span>
+        <strong>{criticalRisks.length}</strong>
+      </div>
+
+      <div>
+        <span>High Risks</span>
+        <strong>{highRisks.length}</strong>
+      </div>
+
+      <div>
+        <span>Worsening Trends</span>
+        <strong>{worseningRisks.length}</strong>
+      </div>
+
+      <div>
+        <span>Risks Without Owner</span>
+        <strong>{risksWithoutOwners.length}</strong>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<div id="mitigation-tracking" className="data-card">
+  <h2>Mitigation Tracking</h2>
+  <div className="executive-kpi-grid">
+  <div className="executive-kpi-card">
+    <h4>Open Risks</h4>
+    <strong>{activeRisks.length}</strong>
+  </div>
+
+  <div className="executive-kpi-card">
+    <h4>Assigned Owners</h4>
+    <strong>
+      {activeRisks.filter((r) => r.owner).length}
+    </strong>
+  </div>
+
+  <div className="executive-kpi-card">
+    <h4>Unassigned</h4>
+    <strong>
+      {activeRisks.filter((r) => !r.owner).length}
+    </strong>
+  </div>
+</div>
+
+  <div className="risk-table-wrapper">
+  <table className="risk-table">
+    <thead>
+  <tr>
+    <th>Risk</th>
+    <th>Owner</th>
+    <th>Status</th>
+    <th>Trend</th>
+    <th>Mitigation Plan</th>
+  </tr>
+</thead>
+
+    <tbody>
+      {activeRisks.map((risk) => (
+        <tr key={risk.id}>
+          <td>{risk.title}</td>
+          <td>{risk.owner || "Unassigned"}</td>
+          <td>{risk.status}</td>
+          <td>{risk.trend}</td>
+          <td className="mitigation-column">
+  {risk.mitigationPlan || risk.mitigation || "-"}
+</td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+  </div>
+</div>
+
+<div id="contract-intelligence" className="data-card">
+  <h2>Contract Intelligence</h2>
+  <p>
+    Phase 5 will convert uploaded contracts into detected clauses, generated risks,
+    notice requirements, and mitigation recommendations.
+  </p>
+
+  <div className="contract-roadmap-grid">
+    <div>✅ Contract Upload Tracking</div>
+    <div>✅ Contract-Generated Risk Framework</div>
+    <div>⬜ PDF Text Extraction</div>
+    <div>⬜ Clause Detection</div>
+    <div>⬜ Notice Requirement Tracking</div>
+    <div>⬜ Liquidated Damages Detection</div>
+    <div>⬜ FAR / DFARS / CUI Detection</div>
+    <div>⬜ AI Mitigation Recommendations</div>
+  </div>
+</div>
+
+<div className="data-card">
             <div className="section-header-row">
-              <div>
-                <h2>Executive Risk Brief</h2>
+              <div
+  id="executive-brief"
+  className="data-card"
+>
+  <h2>Executive Risk Brief</h2>
                 <p>
                   The highest-priority risks requiring leadership awareness,
                   mitigation, or escalation.
@@ -1116,51 +1345,45 @@ function getConstraintAge(constraint) {
   {executiveAlerts.length === 0 ? (
     <p>No executive alerts at this time.</p>
   ) : (
-    <table className="data-table">
-     {executiveAlerts.length === 0 ? (
-  <p>No executive alerts at this time.</p>
-) : (
-  <div className="executive-alert-grid">
-    {executiveAlerts.map((alert) => (
-      <div className="executive-alert-card" key={alert.id}>
-        <div className="executive-alert-topline">
-          <span className="executive-alert-icon">⚠️</span>
-          <span className="executive-alert-type">{alert.type}</span>
-          <span className="executive-alert-priority">High Priority</span>
-        </div>
-
-        <h3>{alert.risk}</h3>
-
-        <div className="executive-alert-meta">
-          <div>
-            <span>Owner</span>
-            <strong>{alert.owner || "Unassigned"}</strong>
+    <div className="executive-alert-grid">
+      {executiveAlerts.map((alert) => (
+        <div className="executive-alert-card" key={alert.id}>
+          <div className="executive-alert-topline">
+            <span className="executive-alert-icon">⚠️</span>
+            <span className="executive-alert-type">{alert.type}</span>
+            <span className="executive-alert-priority">High Priority</span>
           </div>
 
-          <div>
-            <span>Status</span>
-            <strong>{alert.status || "Open"}</strong>
+          <h3>{alert.risk}</h3>
+
+          <div className="executive-alert-meta">
+            <div>
+              <span>Owner</span>
+              <strong>{alert.owner || "Unassigned"}</strong>
+            </div>
+
+            <div>
+              <span>Status</span>
+              <strong>{alert.status || "Open"}</strong>
+            </div>
+
+            <div>
+              <span>Days Open</span>
+              <strong>{alert.daysOpen ?? "-"}</strong>
+            </div>
           </div>
 
-          <div>
-            <span>Days Open</span>
-            <strong>{alert.daysOpen ?? "-"}</strong>
+          <div className="executive-alert-body">
+            <p>
+              <strong>Message:</strong> {alert.message}
+            </p>
+            <p>
+              <strong>Recommended Action:</strong> {alert.recommendation}
+            </p>
           </div>
         </div>
-
-        <div className="executive-alert-body">
-          <p>
-            <strong>Message:</strong> {alert.message}
-          </p>
-          <p>
-            <strong>Recommended Action:</strong> {alert.recommendation}
-          </p>
-        </div>
-      </div>
-    ))}
-  </div>
-)}
-    </table>
+      ))}
+    </div>
   )}
 </div>
 
@@ -1204,8 +1427,11 @@ function getConstraintAge(constraint) {
 
           <div className="data-card">
             <div className="section-header-row">
-              <div>
-                <h2>Risk Sources</h2>
+              <div
+  id="risk-sources"
+  className="data-card"
+>
+  <h2>Risk Sources</h2>
                 <p>
                   Upload or track the documents and Sentinel modules that create
                   risk: pursuit reviews, contracts, permits, specifications,
@@ -1590,8 +1816,11 @@ function getConstraintAge(constraint) {
 
           <div className="data-card">
             <div className="section-header-row">
-              <div>
-                <h2>Project Risk Playbook</h2>
+              <div
+  id="risk-playbook"
+  className="data-card"
+>
+  <h2>Project Risk Playbook</h2>
                 <p>
                   A living executive risk playbook from pursuit through
                   completion.
@@ -1872,8 +2101,11 @@ function getConstraintAge(constraint) {
 
           <div className="data-card">
   <div className="section-header-row">
-    <div>
-      <h2>Risk History</h2>
+    <div
+  id="audit-log"
+  className="data-card"
+>
+  <h2>Risk History</h2>
       <p>Timeline of key risk events, status changes, and trend changes.</p>
     </div>
   </div>
@@ -1916,8 +2148,10 @@ function getConstraintAge(constraint) {
     </div>
   )}
 </div>
-        </>
-      )}
+
+</main>
+  </div>
+)}
     </div>
   );
 }
