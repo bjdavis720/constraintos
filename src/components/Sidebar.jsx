@@ -41,9 +41,25 @@ function Sidebar({
   : inRiskIntegratorOS
   ? [{ label: "RiskIntegratorOS", items: riskIntegratorOSPages }]
   : [];
-
+const navIcons = {
+  "Schedule Intelligence": "📊",
+  "4-Week Look Ahead and Sprint Plan": "🗓️",
+  "Submittal Readiness": "📄",
+  "Schedule Milestones": "🎯",
+  "TIA Intelligence": "⏱️",
+  "Constraint Board": "🚧",
+  "Long Lead Items": "🏗️",
+  "Issues Board": "⚠️",
+  "To-Dos": "✅",
+};
   return (
-    <aside className="sidebar">
+    <aside
+  className={
+    inConstraintOS
+      ? "sidebar sentinel-module-sidebar constraint-module-sidebar"
+      : "sidebar"
+  }
+>
       <button
         type="button"
         className={
@@ -72,8 +88,8 @@ function Sidebar({
         )}
       </button>
 
-      {!inSentinelHome && (
-        <div className="project-selector">
+      {!inSentinelHome && !inConstraintOS && (
+  <div className="project-selector">
           <label>Project</label>
 
           <select
@@ -104,7 +120,8 @@ function Sidebar({
                   className={activePage === item ? "nav-link active" : "nav-link"}
                   onClick={() => setActivePage(item)}
                 >
-                  {item}
+                  <span>{navIcons[item] || "•"}</span>
+<span>{item}</span>
                 </button>
               ))}
             </div>
