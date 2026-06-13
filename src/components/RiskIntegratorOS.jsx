@@ -1015,7 +1015,7 @@ function getConstraintAge(constraint) {
   logo="riskintegrator-logo.png"
   title="RiskIntegratorOS"
   subtitle="Executive risk intelligence from pursuit through project completion."
-  project={project}
+  project={selectedProject}
   description="Executive risk intelligence from pursuit through project completion."
 />
 

@@ -1,4 +1,5 @@
 import { useState } from "react";
+
 function getAgeInDays(dateValue) {
   if (!dateValue) return 0;
 
@@ -60,9 +61,9 @@ function IssuesBoard({
   teamMembers = [],
 }) {
   const [expandedIssueId, setExpandedIssueId] = useState(null);
+  const [todoDrafts, setTodoDrafts] = useState({});
+  const [showArchivedIssues, setShowArchivedIssues] = useState(false);
 
-const [todoDrafts, setTodoDrafts] = useState({});
-const [showArchivedIssues, setShowArchivedIssues] = useState(false);
   const activeIssues = issues.filter((issue) => !issue.archived);
   const archivedIssues = issues.filter((issue) => issue.archived);
 
@@ -85,85 +86,63 @@ const [showArchivedIssues, setShowArchivedIssues] = useState(false);
   return (
     <div className="page">
       <div className="print-report-header print-only">
-  <img src={`${import.meta.env.BASE_URL}logo.png`} alt="ConstraintOS" className="print-logo" />
-  <div>
-    <h1>ConstraintOS Operational Report</h1>
-    <p>{project}</p>
-  </div>
-</div>
-      <div className="page-header">
-  <div>
-    <h1>Issues Board</h1>
-    <p>{project}</p>
-  </div>
+        <img
+          src={`${import.meta.env.BASE_URL}logo.png`}
+          alt="ConstraintOS"
+          className="print-logo"
+        />
+        <div>
+          <h1>ConstraintOS Operational Report</h1>
+          <p>{project}</p>
+        </div>
+      </div>
 
-  <button
-    type="button"
-    className="secondary-button no-print"
-    onClick={() => window.print()}
-  >
-    Print / Export
-  </button>
-</div>
+      <div className="page-header">
+        <div>
+          <h1>Issues Board</h1>
+        </div>
+
+        <button
+          type="button"
+          className="secondary-button no-print"
+          onClick={() => window.print()}
+        >
+          Print / Export
+        </button>
+      </div>
 
       <div className="data-card">
         <h2>Active Issues</h2>
 
-        <table className="data-table issues-table">
-          <thead>
-            <tr>
-              <th>Issue</th>
-              <th>Source</th>
-              <th>Activity ID</th>
-<th>Linked Milestone</th>
-<th>Delta Type</th>
-              <th>Schedule Impact</th>
-              <th>Start</th>
-              <th>Finish</th>
-              <th>Total Float</th>
-              <th>Age</th>
-              <th>Escalation</th>
-<th>Status</th>
-<th>Assigned To</th>
-<th>Action Due</th>
-<th>Action</th>
-            </tr>
-          </thead>
+        <div className="issue-card-list">
+          {filteredIssues.length === 0 && (
+            <p>No issues match this view.</p>
+          )}
 
-          <tbody>
-            {filteredIssues.length === 0 && (
-              <tr>
-                <td colSpan="15">No issues match this view.</td>
-              </tr>
-            )}
+          {filteredIssues.map((issue) => {
+            const escalation = getEscalation(issue);
+            const statusClass = String(issue.status || "Open")
+              .replaceAll(" ", "-")
+              .toLowerCase();
 
-            {filteredIssues.map((issue) => {
-              const escalation = getEscalation(issue);
-              const statusClass = String(issue.status || "Open")
-                .replaceAll(" ", "-")
-                .toLowerCase();
+            return (
+              <div key={issue.id} className="issue-card">
+                <div className="issue-card-main">
+                  <div className="issue-card-title">
+                    <h3>{issue.title || "Untitled Issue"}</h3>
+                    <p>
+                      {issue.source || "-"} ·{" "}
+                      {issue.milestone || "No milestone linked"}
+                    </p>
+                  </div>
 
-              return (
-                <>
-  <tr key={issue.id}>
-                  <td>{issue.title || "-"}</td>
-                  <td>{issue.source || "-"}</td>
-                  <td>{issue.activityId || "-"}</td>
-<td>{issue.milestone || "-"}</td>
-<td>{issue.scheduleDeltaType || "-"}</td>
-                  <td>{getScheduleImpact(issue)}</td>
-                  <td>{issue.start || "-"}</td>
-                  <td>{issue.finish || "-"}</td>
-                  <td>{issue.totalFloat || "-"}</td>
-                  <td>{getAgeInDays(issue.createdAt)} days</td>
+                  <div className="issue-card-meta">
+                    <span>{getAgeInDays(issue.createdAt)} days</span>
 
-                  <td>
                     <span className={`urgency-pill ${escalation.className}`}>
                       {escalation.label}
                     </span>
-                  </td>
 
-                  <td>
                     <button
                       type="button"
                       className={`status-pill-button ${statusClass}`}
@@ -172,20 +151,27 @@ const [showArchivedIssues, setShowArchivedIssues] = useState(false);
                     >
                       {issue.status || "Open"}
                     </button>
-                  </td>
-                  <td>{issue.assignedActionOwner || "-"}</td>
-<td>{issue.assignedActionDueDate || "-"}</td>
 
-                  <td>
+                    <div className="owner-due-cell">
+                      <div>{issue.assignedActionOwner || "-"}</div>
+                      <div>{issue.assignedActionDueDate || "-"}</div>
+                    </div>
+                  </div>
+
+                  <div className="issue-actions">
                     <button
-  type="button"
-  className="secondary-button small-button"
-  onClick={() =>
-    setExpandedIssueId(expandedIssueId === issue.id ? null : issue.id)
-  }
->
-  {expandedIssueId === issue.id ? "Close Workflow" : "Open Workflow"}
-</button>
+                      type="button"
+                      className="secondary-button small-button"
+                      onClick={() =>
+                        setExpandedIssueId(
+                          expandedIssueId === issue.id ? null : issue.id
+                        )
+                      }
+                    >
+                      {expandedIssueId === issue.id
+                        ? "Close Workflow"
+                        : "Open Workflow"}
+                    </button>
 
                     <button
                       type="button"
@@ -195,201 +181,225 @@ const [showArchivedIssues, setShowArchivedIssues] = useState(false);
                     >
                       {issue.manuallyEscalated ? "De-escalate" : "Escalate"}
                     </button>
-                  </td>
-                </tr>
+                  </div>
+                </div>
 
-{expandedIssueId === issue.id && (
-  <tr>
-    <td colSpan="15">
-      <div className="card">
-        <h3>Discuss / Solve</h3>
+                {expandedIssueId === issue.id && (
+                  <div className="issue-workflow-panel">
+                    <div className="card">
+                      <h3>Discuss / Solve</h3>
 
-        <p>
-          <strong>Issue:</strong> {issue.title}
-        </p>
+                      <p>
+                        <strong>Issue:</strong> {issue.title}
+                      </p>
 
-        <label>
-  Discussion Notes
-  <textarea
-    value={issue.notes || ""}
-    onChange={(e) => updateIssueNotes(issue.id, e.target.value)}
-    rows="4"
-    placeholder="Capture discussion, root cause, decision needed, or resolution notes..."
-  />
-</label>
+                      <div className="issue-detail-grid">
+                        <div>
+                          <strong>Activity ID:</strong>{" "}
+                          {issue.activityId || "-"}
+                        </div>
 
-        <div className="form-grid workflow-form-grid">
-          <label>
-            Action Item
-            <input
-  type="text"
-  value={todoDrafts[issue.id]?.action || ""}
-  onChange={(e) =>
-    setTodoDrafts({
-      ...todoDrafts,
-      [issue.id]: {
-        ...(todoDrafts[issue.id] || {}),
-        action: e.target.value,
-      },
-    })
-  }
-/>
-          </label>
+                        <div>
+                          <strong>Delta Type:</strong>{" "}
+                          {issue.scheduleDeltaType || "-"}
+                        </div>
 
-          <label>
-  Assigned To
-  <select
-  value={todoDrafts[issue.id]?.assignedToUserId || ""}
-  onChange={(e) => {
-    const selectedMember = teamMembers.find(
-      (member) => member.id === e.target.value
-    );
+                        <div>
+                          <strong>Schedule Impact:</strong>{" "}
+                          {getScheduleImpact(issue)}
+                        </div>
 
-    setTodoDrafts({
-      ...todoDrafts,
-      [issue.id]: {
-        ...(todoDrafts[issue.id] || {}),
-        assignedToUserId: e.target.value,
-        owner: selectedMember?.name || "",
-      },
-    });
-  }}
->
-  <option value="">Select Team Member</option>
+                        <div>
+                          <strong>Linked Milestone:</strong>{" "}
+                          {issue.milestone || "-"}
+                        </div>
+                      </div>
 
-  {teamMembers.map((member) => (
-    <option key={member.id} value={member.id}>
-      {member.name} - {member.email}
-    </option>
-  ))}
-</select>
-</label>
+                      <label>
+                        Discussion Notes
+                        <textarea
+                          value={issue.notes || ""}
+                          onChange={(e) =>
+                            updateIssueNotes(issue.id, e.target.value)
+                          }
+                          rows="4"
+                          placeholder="Capture discussion, root cause, decision needed, or resolution notes..."
+                        />
+                      </label>
 
-          <label>
-            Due Date
-            <input
-              type="date"
-              value={todoDrafts[issue.id]?.dueDate || ""}
-              onChange={(e) =>
-                setTodoDrafts({
-                  ...todoDrafts,
-                  [issue.id]: {
-                    ...(todoDrafts[issue.id] || {}),
-                    dueDate: e.target.value,
-                  },
-                })
-              }
-            />
-          </label>
+                      <div className="form-grid workflow-form-grid">
+                        <label>
+                          Action Item
+                          <input
+                            type="text"
+                            value={todoDrafts[issue.id]?.action || ""}
+                            onChange={(e) =>
+                              setTodoDrafts({
+                                ...todoDrafts,
+                                [issue.id]: {
+                                  ...(todoDrafts[issue.id] || {}),
+                                  action: e.target.value,
+                                },
+                              })
+                            }
+                          />
+                        </label>
+
+                        <label>
+                          Assigned To
+                          <select
+                            value={todoDrafts[issue.id]?.assignedToUserId || ""}
+                            onChange={(e) => {
+                              const selectedMember = teamMembers.find(
+                                (member) => member.id === e.target.value
+                              );
+
+                              setTodoDrafts({
+                                ...todoDrafts,
+                                [issue.id]: {
+                                  ...(todoDrafts[issue.id] || {}),
+                                  assignedToUserId: e.target.value,
+                                  owner: selectedMember?.name || "",
+                                },
+                              });
+                            }}
+                          >
+                            <option value="">Select Team Member</option>
+
+                            {teamMembers.map((member) => (
+                              <option key={member.id} value={member.id}>
+                                {member.name} - {member.email}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+
+                        <label>
+                          Due Date
+                          <input
+                            type="date"
+                            value={todoDrafts[issue.id]?.dueDate || ""}
+                            onChange={(e) =>
+                              setTodoDrafts({
+                                ...todoDrafts,
+                                [issue.id]: {
+                                  ...(todoDrafts[issue.id] || {}),
+                                  dueDate: e.target.value,
+                                },
+                              })
+                            }
+                          />
+                        </label>
+                      </div>
+
+                      <div className="issue-workflow-actions">
+                        <button
+                          type="button"
+                          className="primary-button small-button"
+                          onClick={() => {
+                            createManualTodoFromIssue(
+                              issue,
+                              todoDrafts[issue.id] || {}
+                            );
+
+                            setTodoDrafts({
+                              ...todoDrafts,
+                              [issue.id]: {
+                                action: "",
+                                owner: "",
+                                assignedToUserId: "",
+                                dueDate: "",
+                              },
+                            });
+                          }}
+                          disabled={!permissions.canCreateTodoFromIssue}
+                        >
+                          Create Action
+                        </button>
+
+                        <button
+                          type="button"
+                          className="secondary-button small-button"
+                          onClick={() => updateIssueStatus(issue.id)}
+                          disabled={!permissions.canUpdateIssueStatus}
+                        >
+                          Move Status
+                        </button>
+
+                        <button
+                          type="button"
+                          className="secondary-button small-button"
+                          onClick={() => archiveIssue(issue.id)}
+                          disabled={!permissions.canArchiveIssue}
+                        >
+                          Archive Issue
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
-
-        <div style={{ marginTop: "12px", display: "flex", gap: "8px", flexWrap: "wrap" }}>
-  <button
-    type="button"
-    className="primary-button small-button"
-    onClick={() => {
-      createManualTodoFromIssue(issue, todoDrafts[issue.id] || {});
-      setTodoDrafts({
-        ...todoDrafts,
-        [issue.id]: {
-  action: "",
-  owner: "",
-  assignedToUserId: "",
-  dueDate: "",
-},
-      });
-    }}
-    disabled={!permissions.canCreateTodoFromIssue}
-  >
-    Create Action
-  </button>
-
-  <button
-    type="button"
-    className="secondary-button small-button"
-    onClick={() => updateIssueStatus(issue.id)}
-    disabled={!permissions.canUpdateIssueStatus}
-  >
-    Move Status
-  </button>
-
-  <button
-    type="button"
-    className="secondary-button small-button"
-    onClick={() => archiveIssue(issue.id)}
-    disabled={!permissions.canArchiveIssue}
-  >
-    Archive Issue
-  </button>
-</div>
-      </div>
-    </td>
-  </tr>
-)}
-</>
-              );
-            })}
-          </tbody>
-        </table>
       </div>
 
       {archivedIssues.length > 0 && !dashboardFilter && (
-  <div className="data-card">
-    <div className="section-header-row">
-      <h2>Archived Issues</h2>
+        <div className="data-card">
+          <div className="section-header-row">
+            <h2>Archived Issues</h2>
 
-      <button
-        type="button"
-        className="secondary-button small-button"
-        onClick={() => setShowArchivedIssues(!showArchivedIssues)}
-      >
-        {showArchivedIssues
-          ? "Hide Archived Issues"
-          : `View Archived Issues (${archivedIssues.length})`}
-      </button>
-    </div>
+            <button
+              type="button"
+              className="secondary-button small-button"
+              onClick={() => setShowArchivedIssues(!showArchivedIssues)}
+            >
+              {showArchivedIssues
+                ? "Hide Archived Issues"
+                : `View Archived Issues (${archivedIssues.length})`}
+            </button>
+          </div>
 
-    {showArchivedIssues && (
-
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Issue</th>
-                <th>Source</th>
-                <th>Activity ID</th>
-<th>Linked Milestone</th>
-<th>Delta Type</th>
-                <th>Status</th>
-<th>Action</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {archivedIssues.map((issue) => (
-                <tr key={issue.id}>
-                  <td>{issue.title || "-"}</td>
-                  <td>{issue.source || "-"}</td>
-                  <td>{issue.activityId || "-"}</td>
-<td>{issue.milestone || "-"}</td>
-<td>{issue.scheduleDeltaType || "-"}</td>
-                  <td>{issue.status || "Open"}</td>
-<td>
-  <button
-    type="button"
-    className="secondary-button small-button"
-    onClick={() => deleteIssue(issue.id)}
-    disabled={!permissions.canArchiveIssue}
-  >
-    Delete
-  </button>
-</td>
+          {showArchivedIssues && (
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Issue</th>
+                  <th>Source</th>
+                  <th>Activity ID</th>
+                  <th>Linked Milestone</th>
+                  <th>Delta Type</th>
+                  <th>Status</th>
+                  <th>Action</th>
                 </tr>
-              ))}
-            </tbody>
-              </table>
-    )}
-  </div>
-)}
+              </thead>
+
+              <tbody>
+                {archivedIssues.map((issue) => (
+                  <tr key={issue.id}>
+                    <td>{issue.title || "-"}</td>
+                    <td>{issue.source || "-"}</td>
+                    <td>{issue.activityId || "-"}</td>
+                    <td>{issue.milestone || "-"}</td>
+                    <td>{issue.scheduleDeltaType || "-"}</td>
+                    <td>{issue.status || "Open"}</td>
+                    <td>
+                      <button
+                        type="button"
+                        className="secondary-button small-button"
+                        onClick={() => deleteIssue(issue.id)}
+                        disabled={!permissions.canArchiveIssue}
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
     </div>
   );
 }

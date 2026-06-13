@@ -145,11 +145,17 @@ function SentinelHome({
             <span>RiskIntegratorOS</span>
           </button>
 
-          <button type="button" className="sentinel-home-module-button coming-soon">
-            <div className="accountability-logo-placeholder">A</div>
-            <span>AccountabilityOS</span>
-            <small>Coming Soon</small>
-          </button>
+          <button
+  type="button"
+  className="sentinel-home-module-button"
+  onClick={() => openModule("AccountabilityOS")}
+>
+  <img
+  src={`${import.meta.env.BASE_URL}Accountability-logo.png`}
+  alt="AccountabilityOS"
+/>
+  <span>AccountabilityOS</span>
+</button>
         </aside>
 
         <main className="sentinel-home-main">

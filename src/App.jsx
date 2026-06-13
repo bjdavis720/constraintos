@@ -19,6 +19,7 @@ import ProjectHealthOS from "./components/ProjectHealthOS.jsx";
 import ModuleHeader from "./components/ModuleHeader.jsx";
 import LongLeadItemBoard from "./pages/LongLeadItemBoard.jsx";
 import RiskIntegratorOS from "./components/RiskIntegratorOS";
+import AccountabilityOS from "./components/AccountabilityOS.jsx";
 
 import {
   getAgeInDays,
@@ -1029,6 +1030,7 @@ function renderConstraintOSShell(content) {
     "RiskIntegratorOS",
     "Revenue Forecast",
     "Project Health Reviews",
+    "AccountabilityOS"
   ].includes(activePage) &&
     !isConstraintOSPage && (
       <Sidebar
@@ -1574,6 +1576,13 @@ deleteTeamMember={deleteTeamMember}
       renderNoProjectSelected()
     )
   )}
+  {activePage === "AccountabilityOS" && (
+  <AccountabilityOS
+    project={projectName}
+    projectData={projectData}
+    selectedProject={selectedProject}
+  />
+)}
 
         {![
   "Project Setup",
@@ -1595,6 +1604,7 @@ deleteTeamMember={deleteTeamMember}
 "Design Integration Dashboard",
 "Long Lead Dashboard",
 "Procurement Dashboard",
+
 ].includes(activePage) && (
           <div className="card">
             <h3>{activePage}</h3>
