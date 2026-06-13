@@ -1465,6 +1465,7 @@ deleteTeamMember={deleteTeamMember}
   {activePage === "RiskIntegratorOS" && (
   <RiskIntegratorOS
     project={projectName}
+     projectData={projectData}
     selectedProject={selectedProject}
     riskPlaybook={riskPlaybook}
     setRiskPlaybook={setRiskPlaybook}

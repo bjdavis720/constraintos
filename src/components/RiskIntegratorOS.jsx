@@ -15,6 +15,10 @@ const riskCategories = [
   "Revenue",
   "Executive",
   "Strategic",
+  "Financial",
+"Labor",
+"Execution",
+"Management",
 ];
 
 const riskStatuses = ["Open", "Mitigating", "Escalated", "Retired", "Closed"];
@@ -35,7 +39,9 @@ const sourceTypes = [
 ];
 
 function RiskIntegratorOS({
+  project,
   selectedProject,
+  projectData = {},
   riskPlaybook = [],
   setRiskPlaybook,
   riskSources = [],
@@ -82,6 +88,9 @@ const [showAddRiskForm, setShowAddRiskForm] = useState(false);
   const risksWithoutOwners = activeRisks.filter((risk) => !risk.owner);
   const worseningRisks = activeRisks.filter((risk) => risk.trend === "Worsening");
   const executiveAlerts = getExecutiveAlerts();
+  const detectedClauses = detectContractClauses();
+  const detectedNotices = detectNoticeRequirements();
+  const detectedDamages = detectLiquidatedDamages();
   console.log("Executive Alerts:", executiveAlerts);
 console.log("Active Risks:", activeRisks);
   const executiveHealthScore = Math.max(
@@ -148,97 +157,7 @@ historyRows.sort(
         name === "probability" || name === "impact" ? Number(value) : value,
     });
   }
-  function generateConstraintSuggestedRisks() {
-  const openConstraints = constraints.filter(
-    (constraint) => constraint.status !== "Closed" && !constraint.archived
-  );
-
-  const escalatedConstraints = openConstraints.filter(
-    (constraint) => constraint.status === "Escalated"
-  );
-
-  const today = new Date();
-
-  const agedConstraints = openConstraints.filter((constraint) => {
-    const createdAt = constraint.createdAt || constraint.requiredBy;
-    if (!createdAt) return false;
-
-    const ageInDays = Math.floor(
-      (today - new Date(createdAt)) / (1000 * 60 * 60 * 24)
-    );
-
-    return ageInDays > 30;
-  });
-
-  const generatedRisks = [];
-
-  if (agedConstraints.length > 0) {
-    generatedRisks.push({
-      id: crypto.randomUUID(),
-      risk: `${agedConstraints.length} open constraint(s) older than 30 days`,
-      category: "Schedule",
-      source: "ConstraintOS",
-      confidence: "High",
-    });
-  }
-
-  escalatedConstraints.forEach((constraint) => {
-  constraintRisks.push({
-    id: crypto.randomUUID(),
-    risk: constraint.title || constraint.constraint,
-    category: "Executive",
-    source: "ConstraintOS",
-    confidence: "High",
-    probability: 3,
-    impact: 4,
-    owner: constraint.owner || "Unassigned",
-    trigger: `Constraint remains ${constraint.status}`,
-    mitigation: `Review constraint ownership and resolution plan`,
-  });
-});
-
-  if (openConstraints.length > 20) {
-    generatedRisks.push({
-      id: crypto.randomUUID(),
-      risk: "High volume of open constraints may indicate execution bottleneck",
-      category: "Schedule",
-      source: "ConstraintOS",
-      confidence: "Medium",
-    });
-  }
-
-  const healthReviewItems =
-  projectHealthOS?.reviewItems ||
-  projectHealthOS?.items ||
-  [];
-
-const offTrackHealthItems = healthReviewItems.filter((item) => {
-  const status = item.status || "";
-  return status === "Off Track";
-});
-
-const projectHealthRisks = offTrackHealthItems.map((item) => {
-  const heading =
-    item.heading ||
-    item.category ||
-    "Project Health";
-
-  const reviewItem =
-    item.reviewItem ||
-    item.item ||
-    item.title ||
-    item.name ||
-    "Off Track item";
-
-  return {
-    id: crypto.randomUUID(),
-    risk: `${heading}: ${reviewItem} is Off Track`,
-    category: "Executive",
-    source: "ProjectHealthOS",
-    confidence: "High",
-  };
-});
-}
+  
 function generateContractClauseRisks() {
   const contractSources = riskSources.filter(
     (source) => source.type === "Contract"
@@ -448,7 +367,17 @@ function getLinkedMilestoneSlipDays(risk) {
     currentMilestone.due
   );
 }
+function getPotentialLdExposure(amount, delayDays = 0) {
+  const numericAmount = Number(String(amount).replace(/,/g, ""));
 
+  if (!numericAmount || delayDays <= 0) return "$0";
+
+  return (numericAmount * delayDays).toLocaleString("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  });
+}
 function getRiskRecommendation(risk) {
   const slipDays = getLinkedMilestoneSlipDays(risk);
 
@@ -534,6 +463,303 @@ function getExecutiveAlerts() {
   });
 
   return alerts;
+}
+function getContractClauseRiskDefaults(clauseName) {
+  const clause = String(clauseName || "").toLowerCase();
+
+  if (clause.includes("notice")) {
+    return {
+      title: "Contractual notice compliance risk",
+      category: "Contract",
+      probability: 4,
+      impact: 5,
+    };
+  }
+
+  if (clause.includes("liquidated")) {
+    return {
+      title: "Liquidated damages exposure",
+      category: "Financial",
+      probability: 4,
+      impact: 5,
+    };
+  }
+
+  if (clause.includes("cui") || clause.includes("cyber")) {
+    return {
+      title: "Federal compliance exposure",
+      category: "Compliance",
+      probability: 4,
+      impact: 5,
+    };
+  }
+
+  if (clause.includes("far") || clause.includes("dfars")) {
+    return {
+      title: "Federal acquisition compliance risk",
+      category: "Compliance",
+      probability: 3,
+      impact: 5,
+    };
+  }
+
+  if (clause.includes("labor")) {
+    return {
+      title: "Labor compliance or availability risk",
+      category: "Staffing",
+      probability: 4,
+      impact: 4,
+    };
+  }
+
+  if (clause.includes("furnished")) {
+    return {
+      title: "Owner-furnished equipment dependency",
+      category: "Schedule",
+      probability: 3,
+      impact: 4,
+    };
+  }
+
+  return {
+    title: `${clauseName} contract risk`,
+    category: "Contract",
+    probability: 3,
+    impact: 3,
+  };
+}
+function addContractClauseToPlaybook(clause) {
+  const defaults = getContractClauseRiskDefaults(clause.clause);
+
+  const alreadyExists = riskPlaybook.some(
+    (risk) =>
+      risk.title === defaults.title &&
+      risk.source === clause.source &&
+      risk.sourceType === "Contract Intelligence"
+  );
+
+  if (alreadyExists) return;
+
+  const newRisk = {
+    id: crypto.randomUUID(),
+    title: defaults.title,
+    category: defaults.category,
+    sourceType: "Contract Intelligence",
+    source: clause.source,
+    linkedMilestone: "",
+    probability: defaults.probability,
+    impact: defaults.impact,
+    score: defaults.probability * defaults.impact,
+    owner: "Project Executive",
+    status: "Open",
+    trend: "Stable",
+    mitigation: getDefaultMitigation(
+      defaults.title,
+      defaults.category,
+      "Contract Intelligence"
+    ),
+    trigger: getDefaultTrigger(
+      defaults.title,
+      defaults.category,
+      "Contract Intelligence"
+    ),
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    history: [
+      {
+        date: new Date().toISOString(),
+        action: `Risk Created from Contract Clause: ${clause.clause}`,
+      },
+    ],
+  };
+
+  setRiskPlaybook([...riskPlaybook, newRisk]);
+}
+function detectNoticeRequirements() {
+  const notices = [];
+
+  riskSources
+    .filter((source) => source.type === "Contract")
+    .forEach((source) => {
+      const text = String(source.extractedText || "");
+
+      const sentences = text
+        .split(/(?<=[.!?])\s+/)
+        .map((sentence) => sentence.trim())
+        .filter(Boolean);
+
+      sentences.forEach((sentence) => {
+        const patterns = [
+          /(?:written\s+)?notice\s+within\s+(\d+)\s*day[s]?/i,
+          /(?:provide|submit|give|deliver)\s+(?:written\s+)?notice\s+within\s+(\d+)\s*day[s]?/i,
+          /within\s+(\d+)\s*day[s]?\s+of\s+.*?(?:delay|event|discovery|condition|change)/i,
+          /(\d+)\s*[-]?\s*day[s]?\s+(?:written\s+)?notice/i,
+        ];
+
+        const match = patterns
+          .map((pattern) => sentence.match(pattern))
+          .find(Boolean);
+
+        if (!match) return;
+
+        const lowerSentence = sentence.toLowerCase();
+
+        let appliesTo = "General Notice Requirement";
+
+        if (lowerSentence.includes("delay")) {
+          appliesTo = "Delay Event";
+        }
+
+        if (lowerSentence.includes("differing site")) {
+          appliesTo = "Differing Site Condition";
+        }
+
+        if (lowerSentence.includes("compensable change")) {
+          appliesTo = "Compensable Change";
+        }
+
+        notices.push({
+          source: source.name,
+          noticeDays: Number(match[1]),
+          appliesTo,
+          requirement: sentence,
+        });
+      });
+    });
+
+  const uniqueNotices = notices.filter(
+    (notice, index, self) =>
+      index ===
+      self.findIndex(
+        (item) =>
+          item.source === notice.source &&
+          item.noticeDays === notice.noticeDays &&
+          item.appliesTo === notice.appliesTo
+      )
+  );
+
+  return uniqueNotices.sort((a, b) => a.noticeDays - b.noticeDays);
+}
+
+      
+function detectLiquidatedDamages() {
+  const damages = [];
+
+  riskSources
+    .filter((source) => source.type === "Contract")
+    .forEach((source) => {
+      const text = String(source.extractedText || "");
+
+      const patterns = [
+        /\$([\d,]+)\s*(?:per|\/)\s*day/gi,
+        /liquidated damages.*?\$([\d,]+)/gi,
+      ];
+
+      patterns.forEach((pattern) => {
+        const matches = [...text.matchAll(pattern)];
+
+        matches.forEach((match) => {
+          damages.push({
+            source: source.name,
+            amount: match[1],
+            unit: "Per Day",
+            severity: "Critical",
+          });
+        });
+      });
+    });
+
+  const uniqueDamages = damages.filter(
+    (item, index, self) =>
+      index ===
+      self.findIndex(
+        (x) =>
+          x.source === item.source &&
+          x.amount === item.amount
+      )
+  );
+
+  return uniqueDamages;
+}
+function detectContractClauses() {
+  const detectedClauses = [];
+
+  riskSources
+    .filter((source) => source.type === "Contract")
+    .forEach((source) => {
+      const text = String(source.extractedText || "").toLowerCase();
+
+      const checks = [
+        {
+          clause: "Notice Requirements",
+          severity: "High",
+          description:
+            "Contract may require written notice within a defined time period to preserve rights.",
+          keywords: ["notice", "written notice"],
+        },
+        {
+          clause: "Liquidated Damages",
+          severity: "Critical",
+          description:
+            "Contract may include daily damages or penalties tied to late completion.",
+          keywords: ["liquidated damages", "ld"],
+        },
+        {
+          clause: "CUI / Cybersecurity",
+          severity: "Critical",
+          description:
+            "Contract may include controlled unclassified information or cybersecurity obligations.",
+          keywords: ["cui", "cmmc", "cybersecurity"],
+        },
+        {
+          clause: "FAR / DFARS",
+          severity: "High",
+          description:
+            "Contract may include federal acquisition or defense acquisition compliance requirements.",
+          keywords: ["far", "dfars"],
+        },
+        {
+          clause: "Labor Compliance",
+          severity: "High",
+          description:
+            "Contract may include wage, labor, TERO, PLA, or Davis-Bacon requirements.",
+          keywords: ["davis-bacon", "pla", "tero"],
+        },
+        {
+          clause: "Owner Furnished Equipment",
+          severity: "Medium",
+          description:
+            "Contract may rely on owner- or government-furnished items that could affect schedule.",
+          keywords: ["owner furnished", "government furnished", "ofe", "gfe"],
+        },
+      ];
+
+      checks.forEach((check) => {
+        const found = check.keywords.some((keyword) =>
+          text.includes(keyword)
+        );
+
+        if (found) {
+          detectedClauses.push({
+            source: source.name,
+            clause: check.clause,
+            severity: check.severity,
+            description: check.description,
+          });
+        }
+      });
+    });
+
+  const severityOrder = {
+    Critical: 1,
+    High: 2,
+    Medium: 3,
+    Low: 4,
+  };
+
+  return detectedClauses.sort(
+    (a, b) => severityOrder[a.severity] - severityOrder[b.severity]
+  );
 }
 function loadDemoSuggestedRisks() {
   
@@ -621,7 +847,7 @@ constraints.forEach((constraint) => {
   });
   
 
-  const contractRisks = generateContractClauseRisks();
+  const contractRisks = [];
   const revenueRisks = [];
 
 if (scheduleSnapshots.length >= 2) {
@@ -801,6 +1027,36 @@ if (field === "owner") {
   });
 }
 
+if (field === "mitigation" && value !== risk.mitigation) {
+  history.push({
+    date: new Date().toISOString(),
+    action: "Mitigation Plan Updated",
+  });
+}
+
+if (field === "trigger" && value !== risk.trigger) {
+  history.push({
+    date: new Date().toISOString(),
+    action: "Risk Trigger Updated",
+  });
+}
+
+if (field === "probability") {
+  history.push({
+    date: new Date().toISOString(),
+    action: `Probability Changed: ${risk.probability} → ${value}`,
+  });
+}
+
+if (field === "impact") {
+  history.push({
+    date: new Date().toISOString(),
+    action: `Impact Changed: ${risk.impact} → ${value}`,
+  });
+}
+
+updatedRisk.history = history;
+
 updatedRisk.history = history;
 updatedRisk.score = updatedRisk.probability * updatedRisk.impact;
 
@@ -890,36 +1146,7 @@ function getDefaultMitigation(riskTitle, category, source) {
   if (source === "ConstraintOS") {
     return "Review constraint ownership, confirm required-by date, escalate blocker as needed, and convert to issue or action item if unresolved.";
   }
-  if (
-  field === "mitigation" &&
-  value !== risk.mitigation
-) {
-  history.push({
-    date: new Date().toISOString(),
-    action: "Mitigation Plan Updated",
-  });
-}
-if (
-  field === "trigger" &&
-  value !== risk.trigger
-) {
-  history.push({
-    date: new Date().toISOString(),
-    action: "Risk Trigger Updated",
-  });
-}
-if (field === "probability") {
-  history.push({
-    date: new Date().toISOString(),
-    action: `Probability Changed: ${risk.probability} → ${value}`,
-  });
-}
-if (field === "impact") {
-  history.push({
-    date: new Date().toISOString(),
-    action: `Impact Changed: ${risk.impact} → ${value}`,
-  });
-}
+  
 
   return "Assign accountable owner, define mitigation actions, monitor trend, and escalate if risk worsens.";
 }
@@ -1015,7 +1242,7 @@ function getConstraintAge(constraint) {
   logo="riskintegrator-logo.png"
   title="RiskIntegratorOS"
   subtitle="Executive risk intelligence from pursuit through project completion."
-  project={selectedProject}
+  project={project}
   description="Executive risk intelligence from pursuit through project completion."
 />
 
@@ -1307,21 +1534,148 @@ function getConstraintAge(constraint) {
 <div id="contract-intelligence" className="data-card">
   <h2>Contract Intelligence</h2>
   <p>
-    Phase 5 will convert uploaded contracts into detected clauses, generated risks,
-    notice requirements, and mitigation recommendations.
+    Uploaded contract sources are scanned for notice, liquidated damages,
+    CUI/cybersecurity, labor, insurance, and owner-furnished dependency risks.
   </p>
 
   <div className="contract-roadmap-grid">
     <div>✅ Contract Upload Tracking</div>
     <div>✅ Contract-Generated Risk Framework</div>
+    <div>✅ Text Contract Extraction</div>
+    <div>✅ Clause Detection Rules</div>
+    <div>✅ Notice Requirement Detection</div>
+    <div>✅ Liquidated Damages Detection</div>
+    <div>✅ FAR / DFARS / CUI Detection</div>
     <div>⬜ PDF Text Extraction</div>
-    <div>⬜ Clause Detection</div>
-    <div>⬜ Notice Requirement Tracking</div>
-    <div>⬜ Liquidated Damages Detection</div>
-    <div>⬜ FAR / DFARS / CUI Detection</div>
-    <div>⬜ AI Mitigation Recommendations</div>
   </div>
+    <h3>Detected Notice Periods</h3>
+
+  <div className="risk-table-wrapper">
+    <table className="data-table">
+      <thead>
+        <tr>
+          <th>Contract Source</th>
+          <th>Notice Period</th>
+          <th>Applies To</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        {detectedNotices.length === 0 ? (
+          <tr>
+            <td colSpan="4">No notice periods detected.</td>
+          </tr>
+        ) : (
+          detectedNotices.map((notice, index) => (
+            <tr key={index}>
+              <td>{notice.source}</td>
+              <td>{notice.noticeDays} days</td>
+              <td>{notice.appliesTo}</td>
+              <td>Monitor Notice Window</td>
+            </tr>
+          ))
+        )}
+      </tbody>
+    </table>
+  </div>
+<h3>Liquidated Damages Exposure</h3>
+
+<div className="risk-table-wrapper">
+  <table className="data-table">
+    <thead>
+  <tr>
+    <th>Contract Source</th>
+    <th>LD Amount</th>
+    <th>Unit</th>
+    <th>Estimated Exposure</th>
+    <th>Severity</th>
+  </tr>
+</thead>
+
+    <tbody>
+      {detectedDamages.length === 0 ? (
+        <tr>
+          <td colSpan="5">
+            No liquidated damages detected.
+          </td>
+        </tr>
+      ) : (
+        detectedDamages.map((damage, index) => (
+          <tr key={index}>
+  <td>{damage.source}</td>
+  <td>${damage.amount}</td>
+  <td>{damage.unit}</td>
+  <td>{getPotentialLdExposure(damage.amount, 0)}</td>
+  <td>
+    <span className="status-pill critical">
+      {damage.severity}
+    </span>
+  </td>
+</tr>
+        ))
+      )}
+    </tbody>
+  </table>
 </div>
+  <h3>Detected Contract Clauses</h3>
+    <div className="risk-table-wrapper">
+    <table className="data-table">
+      <thead>
+        <tr>
+          <th>Contract Source</th>
+          <th>Detected Clause</th>
+<th>Severity</th>
+<th>Description</th>
+<th>Action</th>
+        </tr>
+      </thead>
+
+      <tbody>
+  {detectedClauses.length === 0 ? (
+    <tr>
+      <td colSpan="4">
+        No clauses detected from uploaded contracts.
+      </td>
+    </tr>
+  ) : (
+    detectedClauses.map((clause, index) => (
+      <tr key={index}>
+        <td>{clause.source}</td>
+        <td>{clause.clause}</td>
+<td>
+  <span className={`status-pill ${clause.severity.toLowerCase()}`}>
+    {clause.severity}
+  </span>
+</td>
+<td>{clause.description}</td>
+<td>
+  <button
+    type="button"
+    className="primary-button"
+    onClick={() => addContractClauseToPlaybook(clause)}
+  >
+    Add to Playbook
+  </button>
+</td>
+      </tr>
+    ))
+  )}
+</tbody>
+    </table>
+  </div>
+  
+
+  <div className="insight-card">
+    <h3>Current Phase 5 Note</h3>
+    <p>
+      Text-based contracts are currently analyzed. PDF uploads are tracked, but
+      PDF text extraction will require a separate parser step.
+    </p>
+  </div>
+  
+</div>
+
 
 <div className="data-card">
             <div className="section-header-row">
@@ -1495,6 +1849,7 @@ function getConstraintAge(constraint) {
                 />
               </label>
             </div>
+              
 
             <table className="data-table">
               <thead>
