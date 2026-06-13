@@ -920,10 +920,7 @@ setTodoForm({
     setActivePage(page);
   }
 
-  function handleSetActivePage(page) {
-    setDashboardFilter("");
-    setActivePage(page);
-  }
+
   function handleSetActivePage(page) {
   setDashboardFilter("");
   setActivePage(page);
@@ -955,13 +952,15 @@ useEffect(() => {
 
   return (
     <div className="app">
-      <Sidebar
-        activePage={activePage}
-        setActivePage={handleSetActivePage}
-        selectedProject={selectedProject}
-        setSelectedProject={setSelectedProject}
-        projects={projects}
-      />
+      {!["RiskIntegratorOS", "Revenue Forecast"].includes(activePage) && (
+  <Sidebar
+    activePage={activePage}
+    setActivePage={handleSetActivePage}
+    selectedProject={selectedProject}
+    setSelectedProject={setSelectedProject}
+    projects={projects}
+  />
+)}
 
       <main className="main">
       {activePage === "SentinelOS Home" && (

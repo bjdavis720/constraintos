@@ -408,6 +408,12 @@ function buildLinePath(rows, valueKey) {
     })
     .join(" ");
 }
+function scrollToRevenueSection(sectionId) {
+  document.getElementById(sectionId)?.scrollIntoView({
+    behavior: "smooth",
+    block: "start",
+  });
+}
 
   return (
     <div className="page">
@@ -417,9 +423,105 @@ function buildLinePath(rows, valueKey) {
     subtitle="REVENUE FORECASTING & CASH FLOW INTELLIGENCE"
     description="Revenue forecasting, billing movement, BAC analysis, and financial risk."
   />
+  <div className="revenue-executive-layout">
+  <aside className="revenue-executive-sidebar">
+    <button
+      type="button"
+      className="revenue-home-button"
+      onClick={() =>
+        window.dispatchEvent(new CustomEvent("sentinel:navigate-home"))
+      }
+    >
+      💵 SentinelOS Home
+    </button>
+
+    <div className="revenue-sidebar-section">
+      <div className="revenue-sidebar-heading">Revenue</div>
+
+      <button
+        type="button"
+        className="revenue-nav-item"
+        onClick={() => scrollToRevenueSection("revenue-dashboard")}
+      >
+        📊 Revenue Dashboard
+      </button>
+
+      <button
+        type="button"
+        className="revenue-nav-item"
+        onClick={() => scrollToRevenueSection("revenue-scurve")}
+      >
+        📈 Revenue S-Curve
+      </button>
+
+      <button
+        type="button"
+        className="revenue-nav-item"
+        onClick={() => scrollToRevenueSection("revenue-history")}
+      >
+        💾 Revenue History
+      </button>
+    </div>
+
+    <div className="revenue-sidebar-section">
+      <div className="revenue-sidebar-heading">Analytics</div>
+
+      <button
+        type="button"
+        className="revenue-nav-item"
+        onClick={() => scrollToRevenueSection("forecast-delta")}
+      >
+        📉 Forecast Delta
+      </button>
+
+      <button
+        type="button"
+        className="revenue-nav-item"
+        onClick={() => scrollToRevenueSection("cost-loaded-activities")}
+      >
+        🧱 Cost-Loaded Activities
+      </button>
+    </div>
+  </aside>
+
+  <main className="revenue-executive-main">
+
+<div id="revenue-dashboard" className="executive-kpi-grid revenue-kpi-grid">
+  <div className="executive-kpi-card">
+    <span className="kpi-icon">💵</span>
+    <div>
+      <h3>Forecast Revenue</h3>
+      <strong>{formatCurrency(currentForecast.totalForecastRevenue)}</strong>
+    </div>
+  </div>
+
+  <div className="executive-kpi-card high">
+    <span className="kpi-icon">📉</span>
+    <div>
+      <h3>Largest Monthly Decrease</h3>
+      <strong>{formatDelta(largestMonthlyDecrease)}</strong>
+    </div>
+  </div>
+
+  <div className="executive-kpi-card">
+    <span className="kpi-icon">📊</span>
+    <div>
+      <h3>Cost-Loaded Activities</h3>
+      <strong>{currentForecast.costLoadedActivities.length}</strong>
+    </div>
+  </div>
+
+  <div className="executive-kpi-card health">
+    <span className="kpi-icon">✅</span>
+    <div>
+      <h3>Revenue History Entries</h3>
+      <strong>{revenueHistory.length}</strong>
+    </div>
+  </div>
+</div>
 
       
-<div className="data-card">
+<div id="revenue-history" className="data-card">
   <h2>Revenue History</h2>
 
   <form className="entry-form" onSubmit={addManualRevenueHistory}>
@@ -491,26 +593,8 @@ function buildLinePath(rows, valueKey) {
 </div>
 
 
-            <div className="metrics-grid">
-             
-
-
-  <div className="metric-card">
-    <h3>Current Forecast Revenue</h3>
-
-    <div className="metric-value">
-      {formatCurrency(currentForecast.totalForecastRevenue)}
-    </div>
-  </div>
-
-        <div className="metric-card">
-          <h3>Largest Monthly Decrease</h3>
-          <div className="metric-value">
-            {formatDelta(largestMonthlyDecrease)}
-          </div>
-        </div>
-      </div>
-<div className="data-card">
+            
+<div id="revenue-scurve" className="data-card">
   <h2>Revenue S-Curve</h2>
   <p>
     Cumulative comparison of original planned revenue, actual billed revenue,
@@ -642,8 +726,8 @@ function buildLinePath(rows, valueKey) {
     <span className="legend-item forecast">Current Forecast</span>
   </div>
 </div>
-      <div className="data-card">
-        <h2>Monthly Revenue Forecast Delta</h2>
+      <div id="forecast-delta" className="data-card">
+  <h2>Monthly Revenue Forecast Delta</h2>
 
         {forecastRows.length === 0 ? (
           <p>
@@ -682,8 +766,8 @@ function buildLinePath(rows, valueKey) {
         )}
       </div>
 
-      <div className="data-card">
-        <h2>Top Current Cost-Loaded Activities</h2>
+      <div id="cost-loaded-activities" className="data-card">
+  <h2>Top Current Cost-Loaded Activities</h2>
 
         {currentForecast.costLoadedActivities.length === 0 ? (
           <p>No cost-loaded activities found in the current snapshot.</p>
@@ -720,7 +804,10 @@ function buildLinePath(rows, valueKey) {
           </table>
         )}
       </div>
-    </div>
+
+        </main>
+  </div>
+</div>
   );
 }
 
