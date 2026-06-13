@@ -432,7 +432,7 @@ function scrollToRevenueSection(sectionId) {
         window.dispatchEvent(new CustomEvent("sentinel:navigate-home"))
       }
     >
-      💵 SentinelOS Home
+      🛡️ SentinelOS Home
     </button>
 
     <div className="revenue-sidebar-section">
@@ -449,19 +449,22 @@ function scrollToRevenueSection(sectionId) {
       <button
         type="button"
         className="revenue-nav-item"
-        onClick={() => scrollToRevenueSection("revenue-scurve")}
-      >
-        📈 Revenue S-Curve
-      </button>
-
-      <button
-        type="button"
-        className="revenue-nav-item"
         onClick={() => scrollToRevenueSection("revenue-history")}
       >
         💾 Revenue History
       </button>
-    </div>
+    
+
+      <button
+        type="button"
+        className="revenue-nav-item"
+        onClick={() => scrollToRevenueSection("revenue-scurve")}
+      >
+        📈 Revenue S-Curve
+      </button>
+      </div>
+
+      
 
     <div className="revenue-sidebar-section">
       <div className="revenue-sidebar-heading">Analytics</div>
