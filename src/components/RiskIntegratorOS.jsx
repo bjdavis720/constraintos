@@ -91,6 +91,7 @@ const [showAddRiskForm, setShowAddRiskForm] = useState(false);
   const detectedClauses = detectContractClauses();
   const detectedNotices = detectNoticeRequirements();
   const detectedDamages = detectLiquidatedDamages();
+  const detectedCompliance = detectFederalComplianceRequirements();
   console.log("Executive Alerts:", executiveAlerts);
 console.log("Active Risks:", activeRisks);
   const executiveHealthScore = Math.max(
@@ -681,6 +682,90 @@ function detectLiquidatedDamages() {
 
   return uniqueDamages;
 }
+function detectFederalComplianceRequirements() {
+  const requirements = [];
+
+  riskSources
+    .filter((source) => source.type === "Contract")
+    .forEach((source) => {
+      const text = String(source.extractedText || "").toLowerCase();
+
+      const checks = [
+        {
+          requirement: "Controlled Unclassified Information",
+          severity: "Critical",
+          keywords: ["cui", "controlled unclassified information"],
+        },
+        {
+          requirement: "DFARS Cybersecurity Requirements",
+          severity: "Critical",
+          keywords: ["dfars", "252.204-7012", "252.204-7020", "252.204-7021"],
+        },
+        {
+          requirement: "FAR Cybersecurity Requirements",
+          severity: "High",
+          keywords: ["far 52.204-21", "basic safeguarding", "federal contract information"],
+        },
+        {
+          requirement: "NIST 800-171 Compliance",
+          severity: "Critical",
+          keywords: ["nist 800-171", "nist sp 800-171", "800-171"],
+        },
+        {
+          requirement: "Cyber Incident Reporting",
+          severity: "Critical",
+          keywords: ["cyber incident", "incident reporting", "report cyber incidents"],
+        },
+      ];
+
+      checks.forEach((check) => {
+        const found = check.keywords.some((keyword) => text.includes(keyword));
+
+        if (found) {
+          requirements.push({
+            source: source.name,
+            requirement: check.requirement,
+            severity: check.severity,
+          });
+        }
+      });
+    });
+
+  return requirements.filter(
+    (item, index, self) =>
+      index ===
+      self.findIndex(
+        (x) =>
+          x.source === item.source &&
+          x.requirement === item.requirement
+      )
+  );
+}
+function getComplianceAction(requirement) {
+  const value = String(requirement || "").toLowerCase();
+
+  if (value.includes("controlled unclassified")) {
+    return "Assign CUI Owner";
+  }
+
+  if (value.includes("dfars")) {
+    return "Confirm DFARS Flowdown";
+  }
+
+  if (value.includes("far")) {
+    return "Confirm FCI Safeguarding";
+  }
+
+  if (value.includes("nist")) {
+    return "Validate NIST 800-171 Controls";
+  }
+
+  if (value.includes("incident")) {
+    return "Confirm Incident Reporting Process";
+  }
+
+  return "Review Compliance Owner";
+}
 function detectContractClauses() {
   const detectedClauses = [];
 
@@ -704,20 +789,7 @@ function detectContractClauses() {
             "Contract may include daily damages or penalties tied to late completion.",
           keywords: ["liquidated damages", "ld"],
         },
-        {
-          clause: "CUI / Cybersecurity",
-          severity: "Critical",
-          description:
-            "Contract may include controlled unclassified information or cybersecurity obligations.",
-          keywords: ["cui", "cmmc", "cybersecurity"],
-        },
-        {
-          clause: "FAR / DFARS",
-          severity: "High",
-          description:
-            "Contract may include federal acquisition or defense acquisition compliance requirements.",
-          keywords: ["far", "dfars"],
-        },
+        
         {
           clause: "Labor Compliance",
           severity: "High",
@@ -1613,6 +1685,41 @@ function getConstraintAge(constraint) {
     </span>
   </td>
 </tr>
+        ))
+      )}
+    </tbody>
+  </table>
+</div>
+<h3>Federal Compliance Intelligence</h3>
+
+<div className="risk-table-wrapper">
+  <table className="data-table">
+    <thead>
+      <tr>
+        <th>Contract Source</th>
+        <th>Requirement</th>
+        <th>Severity</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      {detectedCompliance.length === 0 ? (
+        <tr>
+          <td colSpan="4">No federal compliance requirements detected.</td>
+        </tr>
+      ) : (
+        detectedCompliance.map((item, index) => (
+          <tr key={index}>
+            <td>{item.source}</td>
+            <td>{item.requirement}</td>
+            <td>
+              <span className={`status-pill ${item.severity.toLowerCase()}`}>
+                {item.severity}
+              </span>
+            </td>
+            <td>{getComplianceAction(item.requirement)}</td>
+          </tr>
         ))
       )}
     </tbody>
