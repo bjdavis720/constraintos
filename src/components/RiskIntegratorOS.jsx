@@ -1012,10 +1012,12 @@ function getConstraintAge(constraint) {
   return (
     <div className="page">
       <ModuleHeader
-        logo="riskintegrator-logo.png"
-        title="RiskIntegratorOS"
-        subtitle="Executive risk intelligence from pursuit through project completion."
-      />
+  logo="riskintegrator-logo.png"
+  title="RiskIntegratorOS"
+  subtitle="Executive risk intelligence from pursuit through project completion."
+  project={project}
+  description="Executive risk intelligence from pursuit through project completion."
+/>
 
       {!selectedProject ? (
         <div className="data-card">

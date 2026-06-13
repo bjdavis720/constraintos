@@ -4846,3 +4846,250 @@ textarea.form-input {
 .constraint-module-sidebar .nav-link span:last-child {
   flex: 1;
 }
+.constraint-os-shell {
+  width: 100%;
+}
+
+.constraint-os-body {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+.constraint-os-sidebar {
+  position: sticky;
+  top: 24px;
+  min-height: calc(100vh - 48px);
+  padding: 20px 14px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #061f3d 0%, #031324 100%);
+  color: white;
+  box-shadow: 0 18px 40px rgba(0, 24, 64, 0.22);
+}
+
+.constraint-home-button,
+.constraint-nav-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 4px 0;
+  padding: 12px;
+  border: none;
+  border-radius: 12px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.86);
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.constraint-home-button {
+  margin-bottom: 20px;
+  background: rgba(255, 255, 255, 0.12);
+  font-weight: 900;
+}
+
+.constraint-nav-item.active {
+  background: linear-gradient(135deg, #1d5fd1, #0d3f8f);
+  color: white;
+}
+
+.constraint-sidebar-heading {
+  margin: 0 0 10px;
+  padding: 0 8px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.62);
+}
+
+.constraint-os-content {
+  min-width: 0;
+}
+
+.constraint-os-content .module-header-card {
+  display: none;
+}
+.sentinel-home-layout {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+.sentinel-home-module-sidebar {
+  position: sticky;
+  top: 24px;
+  min-height: calc(100vh - 48px);
+  padding: 20px 14px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #061f3d 0%, #031324 100%);
+  color: white;
+  box-shadow: 0 18px 40px rgba(0, 24, 64, 0.22);
+}
+
+.sentinel-home-module-button {
+  width: 100%;
+  min-height: 74px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 6px 0;
+  padding: 12px;
+  border: none;
+  border-radius: 14px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.92);
+  font-weight: 900;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sentinel-home-module-button:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.sentinel-home-module-button img {
+  width: 46px;
+  height: 46px;
+  object-fit: contain;
+  background: white;
+  border-radius: 10px;
+  padding: 6px;
+  flex-shrink: 0;
+}
+
+.sentinel-home-module-button.coming-soon {
+  opacity: 0.78;
+  cursor: default;
+  flex-wrap: wrap;
+}
+
+.sentinel-home-module-button small {
+  margin-left: 58px;
+  margin-top: -18px;
+  display: block;
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.58);
+}
+
+.accountability-logo-placeholder {
+  width: 46px;
+  height: 46px;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #12325f;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  flex-shrink: 0;
+}
+
+.sentinel-home-main {
+  min-width: 0;
+}
+
+.sentinel-primary-card,
+.sentinel-portfolio-card {
+  padding: 22px;
+}
+
+.sentinel-primary-card p,
+.sentinel-portfolio-card p {
+  margin: 4px 0 0;
+  color: #667085;
+}
+
+.portfolio-health-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 110px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.portfolio-health-pill.good {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.portfolio-health-pill.monitor {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.portfolio-health-pill.needs-attention {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+@media (max-width: 1100px) {
+  .sentinel-home-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .sentinel-home-module-sidebar {
+    position: static;
+    min-height: auto;
+  }
+}
+.project-search-input {
+  width: 100%;
+  margin: 16px 0;
+  min-height: 40px;
+  border: 1px solid #cfd8e3;
+  border-radius: 10px;
+  padding: 9px 12px;
+  font-family: inherit;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+.portfolio-risk-score {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 56px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.portfolio-risk-score.low {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.portfolio-risk-score.medium {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.portfolio-risk-score.high {
+  background: #fee2e2;
+  color: #991b1b;
+}
+.module-project-banner {
+  display: inline-block;
+  margin: 10px 0;
+  padding: 6px 14px;
+  background: rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.25);
+  border-radius: 999px;
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.module-project-banner strong {
+  color: white;
+  font-weight: 700;
+}

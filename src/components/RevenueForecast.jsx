@@ -1,5 +1,6 @@
 import ModuleHeader from "./ModuleHeader.jsx";
 function RevenueForecast({
+  project = "",
   scheduleSnapshots = [],
   revenueHistory = [],
   updateCurrentProjectData,
@@ -418,11 +419,12 @@ function scrollToRevenueSection(sectionId) {
   return (
     <div className="page">
   <ModuleHeader
-    logo="revenue-logo.png"
-    title="RevenueOS"
-    subtitle="REVENUE FORECASTING & CASH FLOW INTELLIGENCE"
-    description="Revenue forecasting, billing movement, BAC analysis, and financial risk."
-  />
+  logo="revenue-logo.png"
+  title="RevenueOS"
+  subtitle="REVENUE FORECASTING & CASH FLOW INTELLIGENCE"
+  project={project}
+  description="Revenue forecasting, billing movement, BAC analysis, and financial risk."
+/>
   <div className="revenue-executive-layout">
   <aside className="revenue-executive-sidebar">
     <button

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   isOverdue,
   needsExecutiveAttention,
@@ -10,51 +11,67 @@ function SentinelHome({
   setSelectedProject,
   setActivePage,
 }) {
-  const activeProjects = projects.filter((project) => project.status !== "Archived");
+  const [projectSearch, setProjectSearch] = useState("");
 
-  const totals = activeProjects.reduce(
-    (acc, project) => {
-      const data = projectData[project.id] || {};
-      const milestones = data.milestones || [];
-      const constraints = data.constraints || [];
-      const issues = data.issues || [];
-      const todos = data.todos || [];
-
-      const offTrackMilestones = milestones.filter(
-        (item) => !item.archived && item.status === "Off Track"
-      );
-      const escalatedConstraints = constraints.filter(
-        (item) => item.status === "Escalated"
-      );
-      const openIssues = issues.filter(
-        (item) => item.status !== "Closed" && !item.archived
-      );
-      const executiveIssues = openIssues.filter((item) =>
-        needsExecutiveAttention(item)
-      );
-      const openTodos = todos.filter((item) => item.status === "Open");
-      const overdueTodos = todos.filter((item) => isOverdue(item));
-
-      acc.openIssues += openIssues.length;
-      acc.openConstraints += constraints.filter((item) => item.status !== "Closed").length;
-      acc.openTodos += openTodos.length;
-      acc.executiveAttention +=
-        offTrackMilestones.length +
-        escalatedConstraints.length +
-        executiveIssues.length +
-        overdueTodos.length;
-
-      return acc;
-    },
-    {
-      openIssues: 0,
-      openConstraints: 0,
-      openTodos: 0,
-      executiveAttention: 0,
-    }
+  const activeProjects = projects.filter(
+    (project) => project.status !== "Archived"
   );
 
+  const visibleProjects = activeProjects.filter((project) => {
+    const search = projectSearch.toLowerCase();
+
+    return (
+      project.name?.toLowerCase().includes(search) ||
+      project.client?.toLowerCase().includes(search) ||
+      project.location?.toLowerCase().includes(search)
+    );
+  });
+
+  function getProjectSummary(project) {
+    const data = projectData[project.id] || {};
+    const issues = data.issues || [];
+    const todos = data.todos || [];
+    const riskPlaybook = data.riskPlaybook || [];
+
+    const openIssues = issues.filter(
+      (item) => item.status !== "Closed" && !item.archived
+    );
+
+    const openTodos = todos.filter((item) => item.status === "Open");
+    const overdueTodos = todos.filter((item) => isOverdue(item));
+
+    const executiveIssues = openIssues.filter((item) =>
+      needsExecutiveAttention(item)
+    );
+
+    const openRisks = riskPlaybook.filter((risk) => risk.status !== "Closed");
+
+    const riskScore = openRisks.reduce((total, risk) => {
+      const probability = Number(risk.probability || 0);
+      const impact = Number(risk.impact || 0);
+      return total + probability * impact;
+    }, 0);
+
+    return {
+      openIssues,
+      openTodos,
+      openRisks,
+      executiveAttention: executiveIssues.length + overdueTodos.length,
+      riskScore,
+    };
+  }
+
   function openModule(page) {
+    if (activeProjects.length === 0) {
+      setActivePage("Project Setup");
+      return;
+    }
+
+    if (!selectedProject) {
+      alert("Select a project from the Project Registry before opening a module.");
+      return;
+    }
+
     setActivePage(page);
   }
 
@@ -69,191 +86,201 @@ function SentinelHome({
 
         <div>
           <h1>
-  Sentinel<span className="os-highlight">OS</span>
-</h1>
-          <p className="sentinel-tagline">Project Risk & Execution Intelligence</p>
+            Sentinel<span className="os-highlight">OS</span>
+          </h1>
+          <p className="sentinel-tagline">
+            Project Risk & Execution Intelligence
+          </p>
           <p>
-            Identify risk early.  Create accountability.  Drive resolution across
+            Identify risk early. Create accountability. Drive resolution across
             every project.
           </p>
         </div>
       </div>
 
-      {activeProjects.length === 0 ? (
-        <div className="sentinel-welcome-card">
-          <h2>Welcome to SentinelOS</h2>
-          <p>
-            Create your first project to begin tracking constraints, project health,
-            risks, revenue forecasts, executive attention, and accountable action.
-          </p>
+      <div className="sentinel-home-layout">
+        <aside className="sentinel-home-module-sidebar">
+          <button
+            type="button"
+            className="sentinel-home-module-button"
+            onClick={() => openModule("Schedule Intelligence")}
+          >
+            <img src={`${import.meta.env.BASE_URL}logo.png`} alt="ConstraintOS" />
+            <span>ConstraintOS</span>
+          </button>
 
           <button
-  type="button"
-  className="secondary-button"
-  onClick={() => setActivePage("Project Setup")}
->
-  {activeProjects.length === 0 ? "Create First Project" : "Project Setup"}
-</button>
-        </div>
-      ) : (
-        <div className="sentinel-metric-grid">
-          <div className="sentinel-metric-card">
-            <span>Active Projects</span>
-            <strong>{activeProjects.length}</strong>
-          </div>
+            type="button"
+            className="sentinel-home-module-button"
+            onClick={() => openModule("Project Health Reviews")}
+          >
+            <img
+              src={`${import.meta.env.BASE_URL}projecthealth-logo.png`}
+              alt="ProjectHealthOS"
+            />
+            <span>ProjectHealthOS</span>
+          </button>
 
-          <div className="sentinel-metric-card warning">
-            <span>Executive Attention</span>
-            <strong>{totals.executiveAttention}</strong>
-          </div>
+          <button
+            type="button"
+            className="sentinel-home-module-button"
+            onClick={() => openModule("Revenue Forecast")}
+          >
+            <img
+              src={`${import.meta.env.BASE_URL}revenue-logo.png`}
+              alt="RevenueOS"
+            />
+            <span>RevenueOS</span>
+          </button>
 
-          <div className="sentinel-metric-card">
-            <span>Open Issues</span>
-            <strong>{totals.openIssues}</strong>
-          </div>
+          <button
+            type="button"
+            className="sentinel-home-module-button"
+            onClick={() => openModule("RiskIntegratorOS")}
+          >
+            <img
+              src={`${import.meta.env.BASE_URL}riskintegrator-logo.png`}
+              alt="RiskIntegratorOS"
+            />
+            <span>RiskIntegratorOS</span>
+          </button>
 
-          <div className="sentinel-metric-card">
-            <span>Open To-Dos</span>
-            <strong>{totals.openTodos}</strong>
-          </div>
-        </div>
-      )}
+          <button type="button" className="sentinel-home-module-button coming-soon">
+            <div className="accountability-logo-placeholder">A</div>
+            <span>AccountabilityOS</span>
+            <small>Coming Soon</small>
+          </button>
+        </aside>
 
-      <div className="sentinel-section-header">
-        <div>
-          <h2>Modules</h2>
-          <p>Each module feeds the same project risk and accountability structure.</p>
-        </div>
-      </div>
+        <main className="sentinel-home-main">
+          <div className="data-card sentinel-project-card sentinel-primary-card">
+            <div className="section-header-row">
+              <div>
+                <h2>Project Registry</h2>
+                <p>Select or create a project before entering a SentinelOS module.</p>
+              </div>
 
-      <div className="sentinel-module-grid">
-        <button
-          type="button"
-          className="sentinel-module-card module-constraint active-module"
-          onClick={() => {
-  if (activeProjects.length === 0) {
-    setActivePage("Project Setup");
-    return;
-  }
-
-  if (!selectedProject) {
-    alert(
-      "Select a project from the Project Registry below before opening ConstraintOS."
-    );
-    return;
-  }
-
-  setActivePage("Schedule Intelligence");
-}}
-        >
-          <img
-  src={`${import.meta.env.BASE_URL}logo.png`}
-  alt="ConstraintOS"
-  className="module-card-logo"
-/>
-          <span>Active Module</span>
-          <h3>ConstraintOS</h3>
-          <p>Schedule, milestones, constraints, issues, pull planning, and execution risk.</p>
-        </button>
-
-        <button
-          type="button"
-          className="sentinel-module-card module-health"
-          onClick={() => setActivePage("Project Health Reviews")}
-        >
-          <img
-  src={`${import.meta.env.BASE_URL}projecthealth-logo.png`}
-  alt="ProjectHealthOS"
-/>
-          <span>Active Module</span>
-          <h3>ProjectHealthOS</h3>
-          <p>
-  Project health reviews, accountability tracking,
-  issue management, and action resolution.
-</p>
-        </button>
-
-        <button
-          type="button"
-          className="sentinel-module-card module-revenue"
-          onClick={() => openModule("Revenue Forecast")}
-        >
-          <img
-  src={`${import.meta.env.BASE_URL}revenue-logo.png`}
-  alt="RevenueOS"
-/>
-          <span>Active Module</span>
-          <h3>RevenueOS</h3>
-          <p>Revenue forecasting, billing movement, BAC analysis, and financial risk.</p>
-        </button>
-
-        <button
-  type="button"
-  className="sentinel-module-card module-risk"
-  onClick={() => openModule("RiskIntegratorOS")}
->
-  <img
-    src={`${import.meta.env.BASE_URL}riskintegrator-logo.png`}
-    alt="RiskIntegratorOS"
-  />
-  <span>Active Module</span>
-  <h3>RiskIntegratorOS</h3>
-  <p>
-    Risk register, risk playbooks, escalation logic, and accountability governance.
-  </p>
-</button>
-
-</div>
-
-      <div className="data-card sentinel-project-card">
-  <div className="section-header-row">
-    <h2>Project Registry</h2>
-
-    <button
-  type="button"
-  className="secondary-button"
-  onClick={() => setActivePage("Project Setup")}
->
-  + Add / Manage Projects & Teams
-</button>
-  </div>
-
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Project</th>
-              <th>Status</th>
-              <th>Client</th>
-              <th>Location</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {activeProjects.map((project) => (
-              <tr
-                key={project.id}
-                className={
-                  selectedProject === project.id ? "clickable-row selected-row" : "clickable-row"
-                }
-                onClick={() => {
-                  setSelectedProject(project.id);
-setActivePage("Schedule Intelligence");
-                }}
+              <button
+                type="button"
+                className="primary-button"
+                onClick={() => setActivePage("Project Setup")}
               >
-                <td>{project.name}</td>
-                <td>{project.status}</td>
-                <td>{project.client || "-"}</td>
-                <td>{project.location || "-"}</td>
-              </tr>
-            ))}
+                + Add / Manage Projects & Teams
+              </button>
+            </div>
 
-            {activeProjects.length === 0 && (
-              <tr>
-                <td colSpan="4">No active projects have been created yet.</td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+            <input
+              type="text"
+              className="project-search-input"
+              placeholder="Search projects by name, client, or location..."
+              value={projectSearch}
+              onChange={(e) => setProjectSearch(e.target.value)}
+            />
+
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Project</th>
+                  <th>Status</th>
+                  <th>Client</th>
+                  <th>Location</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {visibleProjects.map((project) => (
+                  <tr
+                    key={project.id}
+                    className={
+                      selectedProject === project.id
+                        ? "clickable-row selected-row"
+                        : "clickable-row"
+                    }
+                    onClick={() => setSelectedProject(project.id)}
+                  >
+                    <td>{project.name}</td>
+                    <td>{project.status}</td>
+                    <td>{project.client || "-"}</td>
+                    <td>{project.location || "-"}</td>
+                  </tr>
+                ))}
+
+                {visibleProjects.length === 0 && (
+                  <tr>
+                    <td colSpan="4">No matching projects found.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="data-card sentinel-portfolio-card">
+            <div className="section-header-row">
+              <div>
+                <h2>Project Portfolio Summary</h2>
+                <p>Executive view across risks, issues, actions, and revenue.</p>
+              </div>
+            </div>
+
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Project</th>
+                  <th>Risk Score</th>
+                  <th>Risks</th>
+                  <th>Issues</th>
+                  <th>To-Dos</th>
+                  <th>Executive Attention</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {visibleProjects.map((project) => {
+                  const summary = getProjectSummary(project);
+
+                  return (
+                    <tr
+                      key={project.id}
+                      className={
+                        selectedProject === project.id
+                          ? "clickable-row selected-row"
+                          : "clickable-row"
+                      }
+                      onClick={() => setSelectedProject(project.id)}
+                    >
+                      <td>{project.name}</td>
+                      <td>
+                        <span
+                          className={`portfolio-risk-score ${
+                            summary.riskScore >= 40
+                              ? "high"
+                              : summary.riskScore >= 15
+                              ? "medium"
+                              : "low"
+                          }`}
+                        >
+                          {summary.riskScore}
+                        </span>
+                      </td>
+                      <td>{summary.openRisks.length}</td>
+                      <td>{summary.openIssues.length}</td>
+                      <td>{summary.openTodos.length}</td>
+                      <td>{summary.executiveAttention}</td>
+                      <td>{project.status}</td>
+                    </tr>
+                  );
+                })}
+
+                {visibleProjects.length === 0 && (
+                  <tr>
+                    <td colSpan="7">No matching projects found.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </main>
       </div>
     </div>
   );

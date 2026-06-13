@@ -1,4 +1,10 @@
-function ModuleHeader({ logo, title, subtitle, description }) {
+function ModuleHeader({
+  logo,
+  title,
+  subtitle,
+  description,
+  project,
+}) {
   return (
     <div className="module-header-card">
       <div className="module-header-logo-wrap">
@@ -12,7 +18,17 @@ function ModuleHeader({ logo, title, subtitle, description }) {
       <div>
         <h1 className="module-header-title">{title}</h1>
         {subtitle && <div className="module-header-subtitle">{subtitle}</div>}
-        {description && <p className="module-header-description">{description}</p>}
+        {project && (
+  <div className="module-project-banner">
+    Active Project: <strong>{project}</strong>
+  </div>
+)}
+
+{description && (
+  <p className="module-header-description">
+    {description}
+  </p>
+)}
       </div>
     </div>
   );

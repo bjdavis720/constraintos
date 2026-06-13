@@ -352,6 +352,7 @@ function scrollToHealthSection(sectionId) {
   logo="projecthealth-logo.png"
   title="ProjectHealthOS"
   subtitle="Project Health & Accountability"
+  project={project}
   description="Project health reviews, executive attention, risk trends, and accountability tracking."
 />
 

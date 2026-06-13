@@ -949,18 +949,96 @@ useEffect(() => {
       </div>
     );
   }
+const constraintOSPages = [
+  "Schedule Intelligence",
+  "4-Week Look Ahead and Sprint Plan",
+  "Submittal Readiness",
+  "Schedule Milestones",
+  "TIA Intelligence",
+  "Constraint Board",
+  "Long Lead Items",
+  "Issues Board",
+  "To-Dos",
+];
 
+const isConstraintOSPage = constraintOSPages.includes(activePage);
+
+const constraintNavIcons = {
+  "Schedule Intelligence": "📊",
+  "4-Week Look Ahead and Sprint Plan": "🗓️",
+  "Submittal Readiness": "📄",
+  "Schedule Milestones": "🎯",
+  "TIA Intelligence": "⏱️",
+  "Constraint Board": "🚧",
+  "Long Lead Items": "🏗️",
+  "Issues Board": "⚠️",
+  "To-Dos": "✅",
+};
+
+function renderConstraintOSShell(content) {
+  return (
+    <div className="constraint-os-shell">
+      <ModuleHeader
+  logo="logo.png"
+  title="ConstraintOS"
+  subtitle="OPERATIONAL CONSTRAINT INTELLIGENCE"
+  project={projectName}
+  description="Schedule intelligence, constraints, issues, sprint planning, and milestone management."
+/>
+
+      <div className="constraint-os-body">
+        <aside className="constraint-os-sidebar">
+          <button
+            type="button"
+            className="constraint-home-button"
+            onClick={() => setActivePage("SentinelOS Home")}
+          >
+            🛡️ SentinelOS Home
+          </button>
+
+          <div className="constraint-sidebar-section">
+            <div className="constraint-sidebar-heading">Workflow</div>
+
+            {constraintOSPages.map((page) => (
+              <button
+                type="button"
+                key={page}
+                className={
+                  activePage === page
+                    ? "constraint-nav-item active"
+                    : "constraint-nav-item"
+                }
+                onClick={() => setActivePage(page)}
+              >
+                <span>{constraintNavIcons[page]}</span>
+                <span>{page}</span>
+              </button>
+            ))}
+          </div>
+        </aside>
+
+        <main className="constraint-os-content">{content}</main>
+      </div>
+    </div>
+  );
+}
   return (
     <div className="app">
-      {!["RiskIntegratorOS", "Revenue Forecast", "Project Health Reviews"].includes(activePage) && (
-  <Sidebar
-    activePage={activePage}
-    setActivePage={handleSetActivePage}
-    selectedProject={selectedProject}
-    setSelectedProject={setSelectedProject}
-    projects={projects}
-  />
-)}
+  {![
+    "SentinelOS Home",
+    "RiskIntegratorOS",
+    "Revenue Forecast",
+    "Project Health Reviews",
+  ].includes(activePage) &&
+    !isConstraintOSPage && (
+      <Sidebar
+        activePage={activePage}
+        setActivePage={handleSetActivePage}
+        selectedProject={selectedProject}
+        setSelectedProject={setSelectedProject}
+        projects={projects}
+      />
+  )}
 
       <main className="main">
       {activePage === "SentinelOS Home" && (
@@ -1295,190 +1373,207 @@ deleteTeamMember={deleteTeamMember}
         )}
 
           {activePage === "Schedule Intelligence" &&
-  (selectedProject ? (
-  <ScheduleIntelligence
-  project={projectName}
-  scheduleSnapshots={scheduleSnapshots}
-  updateCurrentProjectData={updateCurrentProjectData}
-  issues={issues}
-  milestones={milestones}
-  importMilestones={importMilestones}
-  importIssuesFromSchedule={importIssuesFromSchedule}
-/>
-  ) : (
-    renderNoProjectSelected()
-  ))}
-  {activePage === "TIA Intelligence" &&
-  (selectedProject ? (
-    <TIAIntelligence
-      scheduleSnapshots={scheduleSnapshots}
-      issues={issues}
-      updateCurrentProjectData={updateCurrentProjectData}
-    />
-  ) : (
-    renderNoProjectSelected()
-  ))}
+  renderConstraintOSShell(
+    selectedProject ? (
+      <ScheduleIntelligence
+        project={projectName}
+        scheduleSnapshots={scheduleSnapshots}
+        updateCurrentProjectData={updateCurrentProjectData}
+        issues={issues}
+        milestones={milestones}
+        importMilestones={importMilestones}
+        importIssuesFromSchedule={importIssuesFromSchedule}
+      />
+    ) : (
+      renderNoProjectSelected()
+    )
+  )}
   {activePage === "Revenue Forecast" &&
   (selectedProject ? (
     <RevenueForecast
-  scheduleSnapshots={scheduleSnapshots}
-  revenueHistory={revenueHistory}
-  updateCurrentProjectData={updateCurrentProjectData}
-/>
+      project={projectName}
+      scheduleSnapshots={scheduleSnapshots}
+      revenueHistory={revenueHistory}
+      updateCurrentProjectData={updateCurrentProjectData}
+    />
   ) : (
     renderNoProjectSelected()
   ))}
     {activePage === "4-Week Look Ahead and Sprint Plan" &&
-  (selectedProject ? (
-    <FourWeekLookAhead
-      project={projectName}
-      activities={latestScheduleActivities}
-      scheduleActivities={latestScheduleActivities}
-      scheduleRelationships={latestScheduleRelationships}
-      milestones={milestones}
-      constraints={constraints}
-      issues={issues}
-      submittals={submittals}
-      pullPlans={pullPlans}
-      workZones={workZones}
-      updateCurrentProjectData={updateCurrentProjectData}
-      setConstraintForm={setConstraintForm}
-      setActivePage={setActivePage}
-      ppcHistory={ppcHistory}
-setPpcHistory={(nextPpcHistory) =>
-  updateCurrentProjectData({
-    ppcHistory: nextPpcHistory,
-  })
-}
-          />
-  ) : (
-    renderNoProjectSelected()
-  ))}
+  renderConstraintOSShell(
+    selectedProject ? (
+      <FourWeekLookAhead
+        project={projectName}
+        activities={latestScheduleActivities}
+        scheduleActivities={latestScheduleActivities}
+        scheduleRelationships={latestScheduleRelationships}
+        milestones={milestones}
+        constraints={constraints}
+        issues={issues}
+        submittals={submittals}
+        pullPlans={pullPlans}
+        workZones={workZones}
+        updateCurrentProjectData={updateCurrentProjectData}
+        setConstraintForm={setConstraintForm}
+        setActivePage={setActivePage}
+        ppcHistory={ppcHistory}
+        setPpcHistory={(nextPpcHistory) =>
+          updateCurrentProjectData({ ppcHistory: nextPpcHistory })
+        }
+      />
+    ) : (
+      renderNoProjectSelected()
+    )
+  )}
   {activePage === "Submittal Readiness" &&
-  (selectedProject ? (
-    <SubmittalReadiness
-      project={projectName}
-      submittals={submittals}
-      scheduleActivities={latestScheduleActivities}
-      issues={issues}
-      updateCurrentProjectData={updateCurrentProjectData}
-    />
-  ) : (
-    renderNoProjectSelected()
-  ))}
+  renderConstraintOSShell(
+    selectedProject ? (
+      <SubmittalReadiness
+        project={projectName}
+        submittals={submittals}
+        scheduleActivities={latestScheduleActivities}
+        issues={issues}
+        updateCurrentProjectData={updateCurrentProjectData}
+      />
+    ) : (
+      renderNoProjectSelected()
+    )
+  )}
         {activePage === "Schedule Milestones" &&
-  (selectedProject ? (
-    <ScheduleMilestones
-      project={selectedProject.name}
-      milestones={milestones || []}
-      milestoneForm={milestoneForm}
-      setMilestoneForm={setMilestoneForm}
-      addMilestone={addMilestone}
-      updateMilestoneStatus={updateMilestoneStatus}
-      archiveMilestone={archiveMilestone}
-       unarchiveMilestone={unarchiveMilestone}
-      permissions={permissions}
-      issues={issues || []}
-      todos={todos}
-      updateCurrentProjectData={updateCurrentProjectData}
-    />
-  ) : (
-    renderNoProjectSelected()
-  ))}
+  renderConstraintOSShell(
+    selectedProject ? (
+      <ScheduleMilestones
+        project={projectName}
+        milestones={milestones || []}
+        milestoneForm={milestoneForm}
+        setMilestoneForm={setMilestoneForm}
+        addMilestone={addMilestone}
+        updateMilestoneStatus={updateMilestoneStatus}
+        archiveMilestone={archiveMilestone}
+        unarchiveMilestone={unarchiveMilestone}
+        permissions={permissions}
+        issues={issues || []}
+        todos={todos}
+        updateCurrentProjectData={updateCurrentProjectData}
+      />
+    ) : (
+      renderNoProjectSelected()
+    )
+  )}
   {activePage === "RiskIntegratorOS" && (
   <RiskIntegratorOS
-  selectedProject={selectedProject}
-  riskPlaybook={riskPlaybook}
-  setRiskPlaybook={setRiskPlaybook}
-  riskSources={riskSources}
-  setRiskSources={setRiskSources}
-  suggestedRisks={suggestedRisks}
-  setSuggestedRisks={setSuggestedRisks}
-  constraints={constraints}
-  projectHealthOS={projectHealthOS}
-  scheduleSnapshots={scheduleSnapshots}
-revenueHistory={revenueHistory}
-teamMembers={teamMembers}
-milestones={milestones}
-  
-/>
+    project={projectName}
+    selectedProject={selectedProject}
+    riskPlaybook={riskPlaybook}
+    setRiskPlaybook={setRiskPlaybook}
+    riskSources={riskSources}
+    setRiskSources={setRiskSources}
+    suggestedRisks={suggestedRisks}
+    setSuggestedRisks={setSuggestedRisks}
+    constraints={constraints}
+    projectHealthOS={projectHealthOS}
+    scheduleSnapshots={scheduleSnapshots}
+    revenueHistory={revenueHistory}
+    teamMembers={teamMembers}
+    milestones={milestones}
+  />
 )}
 
         {activePage === "Constraint Board" &&
-          (selectedProject ? (
-            <ConstraintBoard
-  project={selectedProject}
-  teamMembers={teamMembers}
-  milestones={milestones}
-  constraints={constraints}
-  constraintForm={constraintForm}
-  setConstraintForm={setConstraintForm}
-  addConstraint={addConstraint}
-  updateConstraintStatus={updateConstraintStatus}
-  moveConstraintToIssue={moveConstraintToIssue}
-  setActivePage={setActivePage}
-  archiveConstraint={archiveConstraint}
-deleteConstraint={deleteConstraint}
-/>
-
-          ) : (
-            renderNoProjectSelected()
-          ))}
+  renderConstraintOSShell(
+    selectedProject ? (
+      <ConstraintBoard
+        project={selectedProject}
+        teamMembers={teamMembers}
+        milestones={milestones}
+        constraints={constraints}
+        constraintForm={constraintForm}
+        setConstraintForm={setConstraintForm}
+        addConstraint={addConstraint}
+        updateConstraintStatus={updateConstraintStatus}
+        moveConstraintToIssue={moveConstraintToIssue}
+        setActivePage={setActivePage}
+        archiveConstraint={archiveConstraint}
+        deleteConstraint={deleteConstraint}
+      />
+    ) : (
+      renderNoProjectSelected()
+    )
+  )}
 
         {activePage === "Issues Board" &&
-          (selectedProject ? (
-            <IssuesBoard
-  project={projectName}
-  issues={issues}
-  updateIssueStatus={updateIssueStatus}
-  updateIssueNotes={updateIssueNotes}
-  createManualTodoFromIssue={createManualTodoFromIssue}
-  archiveIssue={archiveIssue}
-  toggleIssueEscalation={toggleIssueEscalation}
-  permissions={permissions}
-  dashboardFilter={dashboardFilter}
-  deleteIssue={deleteIssue}
-  teamMembers={teamMembers}
-/>
-          ) : (
-            renderNoProjectSelected()
-          ))}
+  renderConstraintOSShell(
+    selectedProject ? (
+      <IssuesBoard
+        project={projectName}
+        issues={issues}
+        updateIssueStatus={updateIssueStatus}
+        updateIssueNotes={updateIssueNotes}
+        createManualTodoFromIssue={createManualTodoFromIssue}
+        archiveIssue={archiveIssue}
+        toggleIssueEscalation={toggleIssueEscalation}
+        permissions={permissions}
+        dashboardFilter={dashboardFilter}
+        deleteIssue={deleteIssue}
+        teamMembers={teamMembers}
+      />
+    ) : (
+      renderNoProjectSelected()
+    )
+  )}
           {activePage === "Long Lead Items" &&
-  (selectedProject ? (
-    <LongLeadItemBoard
-  longLeadItems={longLeadItems}
-  updateLongLeadItems={updateLongLeadItems}
-  scheduleActivities={latestScheduleActivities}
-  submittals={submittals}
-  issues={issues}
-  constraints={constraints}
-  updateCurrentProjectData={updateCurrentProjectData}
-/>
-  ) : (
-    renderNoProjectSelected()
-  ))}
+  renderConstraintOSShell(
+    selectedProject ? (
+      <LongLeadItemBoard
+        longLeadItems={longLeadItems}
+        updateLongLeadItems={updateLongLeadItems}
+        scheduleActivities={latestScheduleActivities}
+        submittals={submittals}
+        issues={issues}
+        constraints={constraints}
+        updateCurrentProjectData={updateCurrentProjectData}
+      />
+    ) : (
+      renderNoProjectSelected()
+    )
+  )}
         
         {activePage === "To-Dos" &&
-          (selectedProject ? (
-            <TodosPage
-  project={projectName}
-  todos={todos}
-  todoForm={todoForm}
-  setTodoForm={setTodoForm}
-  addTodo={addTodo}
-  completeTodo={completeTodo}
-  undoCompleteTodo={undoCompleteTodo}
-  lastCompletedTodo={lastCompletedTodo}
-  permissions={permissions}
-  dashboardFilter={dashboardFilter}
-  teamMembers={teamMembers}
-  teamMemberForm={teamMemberForm}
-  setTeamMemberForm={setTeamMemberForm}
-  addTeamMember={addTeamMember}
-/>
-          ) : (
-            renderNoProjectSelected()
-          ))}
+  renderConstraintOSShell(
+    selectedProject ? (
+      <TodosPage
+        project={projectName}
+        todos={todos}
+        todoForm={todoForm}
+        setTodoForm={setTodoForm}
+        addTodo={addTodo}
+        completeTodo={completeTodo}
+        undoCompleteTodo={undoCompleteTodo}
+        lastCompletedTodo={lastCompletedTodo}
+        permissions={permissions}
+        dashboardFilter={dashboardFilter}
+        teamMembers={teamMembers}
+        teamMemberForm={teamMemberForm}
+        setTeamMemberForm={setTeamMemberForm}
+        addTeamMember={addTeamMember}
+      />
+    ) : (
+      renderNoProjectSelected()
+    )
+  )}
+  {activePage === "TIA Intelligence" &&
+  renderConstraintOSShell(
+    selectedProject ? (
+      <TIAIntelligence
+        project={projectName}
+        scheduleSnapshots={scheduleSnapshots}
+        issues={issues}
+        updateCurrentProjectData={updateCurrentProjectData}
+      />
+    ) : (
+      renderNoProjectSelected()
+    )
+  )}
 
         {![
   "Project Setup",
