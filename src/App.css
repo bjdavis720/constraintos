@@ -2745,9 +2745,15 @@ body {
 }
 
 .module-header-title {
+  font-size: 42px;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  color: white;
   margin: 0;
-  font-size: 34px;
-  font-weight: 800;
+}
+.module-header-title-os {
+  color: var(--module-accent-color, #4d8cff);
 }
 
 .module-header-subtitle {
@@ -5391,4 +5397,44 @@ textarea.form-input {
 
 .issue-workflow-panel {
   margin-top: 14px;
+}
+.module-header-title-os.ConstraintOS {
+  color: #3b82f6;
+}
+
+.module-header-title-os.SentinelOS {
+  color: #3b82f6;
+}
+
+.module-header-title-os.ProjectHealthOS {
+  color: #22c55e;
+}
+
+.module-header-title-os.RevenueOS {
+  color: #22c55e;
+}
+
+.module-header-title-os.RiskIntegratorOS {
+  color: #f97316;
+}
+
+.module-header-title-os.AccountabilityOS {
+  color: #22c55e;
+}
+.accountability-page .data-table select {
+  width: 135px;
+  height: 34px;
+  padding: 6px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #0b2f5f;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.accountability-page .data-table select:focus {
+  outline: none;
+  border-color: #22c55e;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.18);
 }

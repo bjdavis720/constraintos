@@ -912,9 +912,44 @@ setTodoForm({
         ],
       },
     }));
+    
 
     setLastCompletedTodo(null);
   }
+  function updateTodoStatus(projectId, source, todoId, newStatus) {
+  setProjectData((prev) => {
+    const data = prev[projectId] || createEmptyProjectData();
+
+    if (source === "ProjectHealthOS") {
+      return {
+        ...prev,
+        [projectId]: {
+          ...data,
+          projectHealthOS: {
+            ...(data.projectHealthOS || {}),
+            todos: (data.projectHealthOS?.todos || []).map((todo) =>
+              todo.id === todoId
+                ? { ...todo, status: newStatus }
+                : todo
+            ),
+          },
+        },
+      };
+    }
+
+    return {
+      ...prev,
+      [projectId]: {
+        ...data,
+        todos: (data.todos || []).map((todo) =>
+          todo.id === todoId
+            ? { ...todo, status: newStatus }
+            : todo
+        ),
+      },
+    };
+  });
+}
 
   function goToPageWithFilter(page, filter) {
     setDashboardFilter(filter);
@@ -940,16 +975,16 @@ useEffect(() => {
 }, []);
 
   function renderNoProjectSelected() {
-    return (
-      <div className="card">
-        <h3>No Project Selected</h3>
-        <p>
-          Create or select a project in Project Setup before using the workflow
-          tools.
-        </p>
-      </div>
-    );
-  }
+  return (
+    <div className="card">
+      <h3>No Project Selected</h3>
+      <p>
+        Create or select a project in Project Setup before using the workflow
+        tools.
+      </p>
+    </div>
+  );
+}
 const constraintOSPages = [
   "Schedule Intelligence",
   "4-Week Look Ahead and Sprint Plan",
@@ -1580,14 +1615,16 @@ deleteTeamMember={deleteTeamMember}
   {activePage === "AccountabilityOS" && (
   <AccountabilityOS
     project={projectName}
+    projects={projects}
     projectData={projectData}
     selectedProject={selectedProject}
+    updateTodoStatus={updateTodoStatus}
   />
 )}
 
         {![
   "Project Setup",
-   "Executive Dashboard",
+  "Executive Dashboard",
   "Schedule Intelligence",
   "TIA Intelligence",
   "Revenue Forecast",
@@ -1602,10 +1639,10 @@ deleteTeamMember={deleteTeamMember}
   "Executive Attention",
   "SentinelOS Home",
   "Project Health Reviews",
-"Design Integration Dashboard",
-"Long Lead Dashboard",
-"Procurement Dashboard",
-
+  "AccountabilityOS",
+  "Design Integration Dashboard",
+  "Long Lead Dashboard",
+  "Procurement Dashboard",
 ].includes(activePage) && (
           <div className="card">
             <h3>{activePage}</h3>

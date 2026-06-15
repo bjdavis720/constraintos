@@ -3,21 +3,53 @@ import { useState } from "react";
 
 function AccountabilityOS({
   project,
+  projects = [],
   projectData,
   selectedProject,
+  updateTodoStatus,
 }) {
   const [projectFilter, setProjectFilter] = useState("All Projects");
   const [ownerFilter, setOwnerFilter] = useState("All Owners");
+  const [statusFilter, setStatusFilter] = useState("All Statuses");
+  const projectNameMap = Object.fromEntries(
+  projects.map((project) => [project.id, project.name])
+);
 
+function getProjectName(projectId, data) {
+  return (
+    projectNameMap[projectId] ||
+    data.projectName ||
+    data.name ||
+    data.project ||
+    "Unknown Project"
+  );
+}
+function getActionAgeDays(action) {
+  const startDate = action.createdAt || action.dueDate;
+
+  if (!startDate) return 0;
+
+  return Math.max(
+    0,
+    Math.ceil((new Date() - new Date(startDate)) / (1000 * 60 * 60 * 24))
+  );
+}
+
+function getActionAgeClass(action) {
+  const age = getActionAgeDays(action);
+
+  if (age >= 31) return "status-pill critical";
+  if (age >= 15) return "status-pill high";
+  return "status-pill low";
+}
+
+  
   const allActions = Object.entries(projectData || {}).flatMap(
     ([projectId, data]) => {
       const constraintTodos = data.todos || [];
       const healthTodos = data.projectHealthOS?.todos || [];
 
-      const projectName =
-        data.projectName ||
-        data.name ||
-        (projectId === selectedProject ? project : "Unknown Project");
+      const projectName = getProjectName(projectId, data);
 
       return [
         ...constraintTodos.map((todo) => ({
@@ -38,9 +70,11 @@ function AccountabilityOS({
   );
 
   const projectOptions = [
-    "All Projects",
-    ...new Set(allActions.map((action) => action.projectName).filter(Boolean)),
-  ];
+  "All Projects",
+  ...projects
+    .filter((project) => project.status !== "Archived")
+    .map((project) => project.name),
+];
 
   const ownerOptions = [
     "All Owners",
@@ -52,9 +86,12 @@ function AccountabilityOS({
       projectFilter === "All Projects" || action.projectName === projectFilter;
 
     const matchesOwner =
-      ownerFilter === "All Owners" || action.owner === ownerFilter;
+  ownerFilter === "All Owners" || action.owner === ownerFilter;
 
-    return matchesProject && matchesOwner;
+const matchesStatus =
+  statusFilter === "All Statuses" || action.status === statusFilter;
+
+return matchesProject && matchesOwner && matchesStatus;
   });
 
   const openActions = actions.filter((action) => action.status === "Open");
@@ -63,6 +100,13 @@ function AccountabilityOS({
     if (!action.dueDate) return false;
     return new Date(action.dueDate) < new Date();
   });
+  const escalatedActions = actions.filter(
+  (action) => action.status === "Escalated"
+);
+
+const completedActions = actions.filter(
+  (action) => action.status === "Completed"
+);
   
 
   return (
@@ -122,6 +166,15 @@ function AccountabilityOS({
             <span>Open Actions</span>
             <strong>{openActions.length}</strong>
           </div>
+          <div className="sentinel-metric-card warning">
+  <span>Escalated Actions</span>
+  <strong>{escalatedActions.length}</strong>
+</div>
+
+<div className="sentinel-metric-card">
+  <span>Completed Actions</span>
+  <strong>{completedActions.length}</strong>
+</div>
 
           <div className="sentinel-metric-card warning">
             <span>Overdue Actions</span>
@@ -150,6 +203,19 @@ function AccountabilityOS({
         ))}
       </select>
     </label>
+    <label>
+  Status
+  <select
+    value={statusFilter}
+    onChange={(e) => setStatusFilter(e.target.value)}
+  >
+    <option>All Statuses</option>
+    <option>Open</option>
+    <option>In Progress</option>
+    <option>Escalated</option>
+    <option>Completed</option>
+  </select>
+</label>
 
     <label>
       Owner
@@ -177,7 +243,9 @@ function AccountabilityOS({
                 <th>Owner</th>
                 <th>Source</th>
                 <th>Due Date</th>
+                <th>Age</th>
                 <th>Status</th>
+                <th>Actions</th>
               </tr>
             </thead>
 
@@ -189,13 +257,45 @@ function AccountabilityOS({
                   <td>{action.owner || "-"}</td>
                   <td>{action.source}</td>
                   <td>{action.dueDate || "-"}</td>
-                  <td>{action.status || "Open"}</td>
+
+<td>
+  <span className={getActionAgeClass(action)}>
+    {getActionAgeDays(action)}
+  </span>
+</td>
+
+<td>
+  <select
+    value={action.status || "Open"}
+    onChange={(e) =>
+      updateTodoStatus(action.projectId, action.source, action.id, e.target.value)
+    }
+  >
+    <option>Open</option>
+    <option>In Progress</option>
+    <option>Escalated</option>
+    <option>Completed</option>
+  </select>
+</td>
+<td>
+  {action.status !== "Completed" && (
+    <button
+      type="button"
+      className="secondary-button small-button"
+      onClick={() =>
+        updateTodoStatus(action.projectId, action.source, action.id, "Completed")
+      }
+    >
+      ✓ Complete
+    </button>
+  )}
+</td>
                 </tr>
               ))}
 
               {actions.length === 0 && (
                 <tr>
-                  <td colSpan="6">No actions currently exist.</td>
+                  <td colSpan="8">No actions currently exist.</td>
                 </tr>
               )}
             </tbody>
