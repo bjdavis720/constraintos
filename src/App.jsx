@@ -1061,12 +1061,13 @@ function renderConstraintOSShell(content) {
   return (
     <div className="app">
   {![
-    "SentinelOS Home",
-    "RiskIntegratorOS",
-    "Revenue Forecast",
-    "Project Health Reviews",
-    "AccountabilityOS"
-  ].includes(activePage) &&
+  "SentinelOS Home",
+  "Project Setup",
+  "RiskIntegratorOS",
+  "Revenue Forecast",
+  "Project Health Reviews",
+  "AccountabilityOS"
+].includes(activePage) &&
     !isConstraintOSPage && (
       <Sidebar
         activePage={activePage}
@@ -1106,6 +1107,7 @@ function renderConstraintOSShell(content) {
         
         {activePage === "Project Setup" && (
           <ProjectSetup
+          setActivePage={setActivePage}
   projectForm={projectForm}
   setProjectForm={setProjectForm}
   createProject={createProject}
@@ -1124,6 +1126,7 @@ editingTeamMemberId={editingTeamMemberId}
 setEditingTeamMemberId={setEditingTeamMemberId}
 addTeamMember={addTeamMember}
 deleteTeamMember={deleteTeamMember}
+
 />
         )}
 

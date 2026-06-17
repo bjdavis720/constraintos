@@ -78,11 +78,13 @@ function SentinelHome({
   return (
     <div className="page sentinel-home">
       <div className="sentinel-hero compact">
-        <img
-          src={`${import.meta.env.BASE_URL}sentinel-logo.png`}
-          alt="SentinelOS"
-          className="sentinel-hero-logo"
-        />
+        <div className="sentinel-hero-logo-wrap">
+  <img
+    className="sentinel-hero-logo"
+    src={`${import.meta.env.BASE_URL}sentinel-logo.png`}
+    alt="SentinelOS"
+  />
+</div>
 
         <div>
           <h1>
@@ -100,63 +102,91 @@ function SentinelHome({
 
       <div className="sentinel-home-layout">
         <aside className="sentinel-home-module-sidebar">
-          <button
-            type="button"
-            className="sentinel-home-module-button"
-            onClick={() => openModule("Schedule Intelligence")}
-          >
-            <img src={`${import.meta.env.BASE_URL}logo.png`} alt="ConstraintOS" />
-            <span>ConstraintOS</span>
-          </button>
+  <button
+    type="button"
+    className="sentinel-home-module-button"
+    onClick={() => openModule("Schedule Intelligence")}
+  >
+    <span className="sentinel-module-logo-wrap">
+      <img
+        className="sentinel-module-logo"
+        src={`${import.meta.env.BASE_URL}logo.png`}
+        alt="ConstraintOS"
+      />
+    </span>
+    <span className="sentinel-sidebar-module-name">
+      Constraint<span className="module-header-title-os ConstraintOS">OS</span>
+    </span>
+  </button>
 
-          <button
-            type="button"
-            className="sentinel-home-module-button"
-            onClick={() => openModule("Project Health Reviews")}
-          >
-            <img
-              src={`${import.meta.env.BASE_URL}projecthealth-logo.png`}
-              alt="ProjectHealthOS"
-            />
-            <span>ProjectHealthOS</span>
-          </button>
+  <button
+    type="button"
+    className="sentinel-home-module-button"
+    onClick={() => openModule("Project Health Reviews")}
+  >
+    <span className="sentinel-module-logo-wrap">
+      <img
+        className="sentinel-module-logo"
+        src={`${import.meta.env.BASE_URL}projecthealth-logo.png`}
+        alt="ProjectHealthOS"
+      />
+    </span>
+    <span className="sentinel-sidebar-module-name">
+      ProjectHealth<span className="module-header-title-os ProjectHealthOS">OS</span>
+    </span>
+  </button>
 
-          <button
-            type="button"
-            className="sentinel-home-module-button"
-            onClick={() => openModule("Revenue Forecast")}
-          >
-            <img
-              src={`${import.meta.env.BASE_URL}revenue-logo.png`}
-              alt="RevenueOS"
-            />
-            <span>RevenueOS</span>
-          </button>
+  <button
+    type="button"
+    className="sentinel-home-module-button"
+    onClick={() => openModule("Revenue Forecast")}
+  >
+    <span className="sentinel-module-logo-wrap">
+      <img
+        className="sentinel-module-logo"
+        src={`${import.meta.env.BASE_URL}revenue-logo.png`}
+        alt="RevenueOS"
+      />
+    </span>
+    <span className="sentinel-sidebar-module-name">
+      Revenue<span className="module-header-title-os RevenueOS">OS</span>
+    </span>
+  </button>
 
-          <button
-            type="button"
-            className="sentinel-home-module-button"
-            onClick={() => openModule("RiskIntegratorOS")}
-          >
-            <img
-              src={`${import.meta.env.BASE_URL}riskintegrator-logo.png`}
-              alt="RiskIntegratorOS"
-            />
-            <span>RiskIntegratorOS</span>
-          </button>
+  <button
+    type="button"
+    className="sentinel-home-module-button"
+    onClick={() => openModule("RiskIntegratorOS")}
+  >
+    <span className="sentinel-module-logo-wrap">
+      <img
+        className="sentinel-module-logo"
+        src={`${import.meta.env.BASE_URL}riskintegrator-logo.png`}
+        alt="RiskIntegratorOS"
+      />
+    </span>
+    <span className="sentinel-sidebar-module-name">
+      RiskIntegrator<span className="module-header-title-os RiskIntegratorOS">OS</span>
+    </span>
+  </button>
 
-          <button
-  type="button"
-  className="sentinel-home-module-button"
-  onClick={() => openModule("AccountabilityOS")}
->
-  <img
-  src={`${import.meta.env.BASE_URL}Accountability-logo.png`}
-  alt="AccountabilityOS"
-/>
-  <span>AccountabilityOS</span>
-</button>
-        </aside>
+  <button
+    type="button"
+    className="sentinel-home-module-button"
+    onClick={() => openModule("AccountabilityOS")}
+  >
+    <span className="sentinel-module-logo-wrap">
+      <img
+        className="sentinel-module-logo"
+        src={`${import.meta.env.BASE_URL}Accountability-logo.png`}
+        alt="AccountabilityOS"
+      />
+    </span>
+    <span className="sentinel-sidebar-module-name">
+      Accountability<span className="module-header-title-os AccountabilityOS">OS</span>
+    </span>
+  </button>
+</aside>
 
         <main className="sentinel-home-main">
           <div className="data-card sentinel-project-card sentinel-primary-card">

@@ -1791,14 +1791,30 @@ body {
   box-shadow: 0 14px 30px rgba(15, 42, 86, 0.25);
 }
 
-.sentinel-hero-logo {
-  width: 145px;
-  height: auto;
+.sentinel-hero-logo-wrap {
+  width: 150px;
+  height: 150px;
+  border-radius: 999px;
+  background: radial-gradient(
+    circle,
+     rgba(255, 255, 255, 0.9) 0%,
+    rgba(255, 255, 255, 0.55) 42%,
+    rgba(255, 255, 255, 0) 72%
+  );
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
-  background: white;
-  padding: 14px;
-  border-radius: 18px;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+}
+
+.sentinel-hero-logo {
+  width: 125px;
+  height: 125px;
+  object-fit: contain;
+  padding: 0;
+  background: none;
+  border-radius: 0;
+  filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.28));
 }
 
 .sentinel-eyebrow {
@@ -1975,9 +1991,12 @@ body {
 }
 
 .sentinel-hero.compact .sentinel-hero-logo {
-  width: 112px;
-  padding: 10px;
-  border-radius: 16px;
+  width: 275px;
+  height: 275px;
+  padding: 0;
+  border-radius: 0;
+  background: none;
+  transform: translateY(10px);
 }
 
 .sentinel-hero h1 {
@@ -2718,20 +2737,34 @@ body {
 .module-header-card {
   display: flex;
   align-items: center;
-  gap: 24px;
-  padding: 28px 32px;
+  gap: 28px;
+  padding: 28px 34px;
   margin-bottom: 24px;
-  border-radius: 18px;
-  background: linear-gradient(135deg, #08254d, #1f4f9c);
+
+  border-radius: 24px;
+
+  background: linear-gradient(
+    135deg,
+    #0b1f3f,
+    #12325f,
+    #17418a
+  );
+
   color: white;
-  box-shadow: 0 14px 28px rgba(8, 37, 77, 0.22);
+
+  box-shadow: 0 14px 30px rgba(15, 42, 86, 0.25);
 }
 
 .module-header-logo-wrap {
-  width: 96px;
-  height: 96px;
-  border-radius: 14px;
-  background: white;
+  width: 120px;
+  height: 120px;
+  border-radius: 999px;
+  background: radial-gradient(
+    circle,
+    rgba(255, 255, 255, 0.9) 0%,
+    rgba(255, 255, 255, 0.55) 42%,
+    rgba(255, 255, 255, 0) 72%
+  );
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2739,9 +2772,12 @@ body {
 }
 
 .module-header-logo {
-  max-width: 76px;
-  max-height: 76px;
+  max-width: 250px;
+  max-height: 250px;
   object-fit: contain;
+  filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.28));
+
+  transform: translateY(10px);
 }
 
 .module-header-title {
@@ -3289,8 +3325,8 @@ textarea.form-input {
   fill: #334155;
 }
 .module-card-logo {
-  width: 42px;
-  height: 42px;
+  width: 80px;
+  height: 80px;
   object-fit: contain;
   display: block;
 }
@@ -4939,7 +4975,7 @@ textarea.form-input {
 
 .sentinel-home-module-button {
   width: 100%;
-  min-height: 74px;
+  min-height: 84px;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -4958,14 +4994,31 @@ textarea.form-input {
   background: rgba(255, 255, 255, 0.1);
 }
 
-.sentinel-home-module-button img {
-  width: 46px;
-  height: 46px;
-  object-fit: contain;
-  background: white;
-  border-radius: 10px;
-  padding: 6px;
+.sentinel-module-logo-wrap {
+  width: 72px;
+  height: 72px;
+  border-radius: 999px;
+  background: radial-gradient(
+    circle,
+    rgba(255, 255, 255, 0.9) 0%,
+    rgba(255, 255, 255, 0.5) 42%,
+    rgba(255, 255, 255, 0) 72%
+  );
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
+}
+
+.sentinel-module-logo {
+  width: 125px;
+  height: 125px;
+  object-fit: contain;
+  background: none;
+  border-radius: 0;
+  padding: 0;
+  filter: drop-shadow(0 7px 12px rgba(0, 0, 0, 0.3));
+  transform: translateY(8px);
 }
 
 .sentinel-home-module-button.coming-soon {
@@ -5437,4 +5490,30 @@ textarea.form-input {
   outline: none;
   border-color: #22c55e;
   box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.18);
+}
+.sentinel-hero-logo-wrap {
+  width: 120px;
+  height: 120px;
+  border-radius: 999px;
+  background: radial-gradient(
+    circle,
+    rgba(255, 255, 255, 0.9) 0%,
+    rgba(255, 255, 255, 0.55) 42%,
+    rgba(255, 255, 255, 0) 72%
+  );
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.sentinel-hero-logo {
+  width: 96px;
+  height: 96px;
+  object-fit: contain;
+  background: none;
+  padding: 0;
+  border-radius: 0;
+  filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.28));
+  transform: translateY(3px);
 }

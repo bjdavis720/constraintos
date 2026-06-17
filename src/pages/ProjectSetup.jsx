@@ -12,11 +12,12 @@ function ProjectSetup({
   permissions,
   teamMembers,
   teamMemberForm,
-setTeamMemberForm,
-editingTeamMemberId,
-setEditingTeamMemberId,
-addTeamMember,
-deleteTeamMember,
+  setTeamMemberForm,
+  editingTeamMemberId,
+  setEditingTeamMemberId,
+  addTeamMember,
+  deleteTeamMember,
+  setActivePage,
 }) {
   function handleChange(e) {
     const { name, value } = e.target;
@@ -32,13 +33,59 @@ deleteTeamMember,
   );
 
   return (
-    <div className="page">
-      <div className="page-header">
-        <h1>Project Setup</h1>
-        <p>Create and manage projects before using workflow tools.</p>
+  <div className="page sentinel-home">
+    <div className="sentinel-hero compact">
+      <div className="sentinel-hero-logo-wrap">
+        <img
+          className="sentinel-hero-logo"
+          src={`${import.meta.env.BASE_URL}sentinel-logo.png`}
+          alt="SentinelOS"
+        />
       </div>
 
-      <form className="entry-form project-setup-form" onSubmit={createProject}>
+      <div>
+        <h1>
+          Sentinel<span className="os-highlight">OS</span>
+        </h1>
+        <p className="sentinel-tagline">Project Setup</p>
+        <p>
+          Create and manage projects, teams, and project registry data before
+          entering SentinelOS modules.
+        </p>
+      </div>
+    </div>
+
+    <div className="sentinel-home-layout">
+      <aside className="sentinel-home-module-sidebar">
+        <button
+          type="button"
+          className="sentinel-home-module-button"
+          onClick={() => setActivePage("SentinelOS Home")}
+        >
+          <span className="sentinel-module-logo-wrap">
+            <img
+              className="sentinel-module-logo"
+              src={`${import.meta.env.BASE_URL}sentinel-logo.png`}
+              alt="SentinelOS"
+            />
+          </span>
+
+          <span className="sentinel-sidebar-module-name">
+            Sentinel
+            <span className="module-header-title-os SentinelOS">
+              OS
+            </span>{" "}
+            Home
+          </span>
+        </button>
+      </aside>
+
+      <main className="sentinel-home-main">
+
+      <div className="data-card sentinel-project-card">
+  <h2>Create Project</h2>
+
+  <form className="entry-form project-setup-form" onSubmit={createProject}>
         <div className="form-group">
           <label>Project Name</label>
           <input
@@ -116,6 +163,7 @@ deleteTeamMember,
 </button>
         </div>
       </form>
+      </div>
 
       <div className="data-card">
         <h2>Active Projects</h2>
@@ -362,10 +410,15 @@ deleteTeamMember,
               ))}
             </tbody>
           </table>
+          
         </div>
       )}
+        </main>
+</div>
     </div>
+    
   );
+  
 }
 
 export default ProjectSetup;
