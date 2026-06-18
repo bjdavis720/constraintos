@@ -215,7 +215,8 @@ function generateContractClauseRisks() {
     },
   ];
 
-  const contractRisks = [];
+   const contractRisks = generateContractClauseRisks();
+  const documentRisks = generateUploadedDocumentRisks();
 
   contractSources.forEach((source) => {
     const text = String(source.extractedText || "").toLowerCase();
@@ -833,6 +834,200 @@ function detectContractClauses() {
     (a, b) => severityOrder[a.severity] - severityOrder[b.severity]
   );
 }
+function generateUploadedDocumentRisks() {
+  const generated = [];
+
+  riskSources.forEach((source) => {
+    const text = String(source.extractedText || "").toLowerCase();
+    const sourceName = source.name || source.type || "Uploaded Source";
+
+    const addRisk = ({
+      risk,
+      category,
+      confidence = "Medium",
+      probability = 3,
+      impact = 3,
+      owner = "Project Executive",
+      mitigation,
+      trigger,
+    }) => {
+      generated.push({
+        id: crypto.randomUUID(),
+        risk,
+        category,
+        source: source.type,
+        confidence,
+        probability,
+        impact,
+        owner,
+        mitigation:
+          mitigation ||
+          getDefaultMitigation(risk, category, source.type),
+        trigger:
+          trigger ||
+          `${source.type} source detected: ${sourceName}`,
+      });
+    };
+
+    if (source.type === "Specification") {
+      addRisk({
+        risk: `Specification compliance risk detected: ${sourceName}`,
+        category: "Compliance",
+        confidence: source.extractedText ? "High" : "Medium",
+        probability: 3,
+        impact: 4,
+        mitigation:
+          "Review Division 01 requirements, assign compliance owners, and track required submittals, meetings, PMIS obligations, safety requirements, and closeout deliverables.",
+      });
+
+      if (
+        text.includes("pmis") ||
+        text.includes("kahua") ||
+        !source.extractedText
+      ) {
+        addRisk({
+          risk: "PMIS / document control compliance risk",
+          category: "Compliance",
+          confidence: source.extractedText ? "High" : "Medium",
+          probability: 3,
+          impact: 4,
+          owner: "Project Manager",
+          mitigation:
+            "Confirm PMIS access, document routing, submittal workflow, and owner approval requirements before construction activities begin.",
+          trigger:
+            "Specification requires project documentation, submittals, RFIs, invoices, reports, or schedules to be managed through PMIS/Kahua.",
+        });
+      }
+
+      if (
+        text.includes("submittal") ||
+        text.includes("review period") ||
+        !source.extractedText
+      ) {
+        addRisk({
+          risk: "Submittal review and approval delay risk",
+          category: "Schedule",
+          confidence: source.extractedText ? "High" : "Medium",
+          probability: 4,
+          impact: 4,
+          owner: "Project Manager",
+          mitigation:
+            "Build submittal review durations into the schedule, identify critical submittals, and track approval need dates weekly.",
+          trigger:
+            "Specification includes submittal procedures, review periods, resubmittals, or approval requirements.",
+        });
+      }
+
+      if (
+        text.includes("safety") ||
+        text.includes("ssho") ||
+        text.includes("osha") ||
+        !source.extractedText
+      ) {
+        addRisk({
+          risk: "Safety staffing and compliance risk",
+          category: "Safety",
+          confidence: source.extractedText ? "High" : "Medium",
+          probability: 3,
+          impact: 5,
+          owner: "Superintendent",
+          mitigation:
+            "Confirm SSHO requirements, safety meeting cadence, APP/CSHP requirements, and site safety documentation responsibilities.",
+          trigger:
+            "Specification includes site safety, SSHO, OSHA, APP, CSHP, SDS, or weekly safety meeting requirements.",
+        });
+      }
+
+      if (
+        text.includes("hspd-12") ||
+        text.includes("clearance") ||
+        text.includes("security") ||
+        !source.extractedText
+      ) {
+        addRisk({
+          risk: "Access / security clearance risk",
+          category: "Compliance",
+          confidence: source.extractedText ? "High" : "Medium",
+          probability: 3,
+          impact: 4,
+          owner: "Project Manager",
+          mitigation:
+            "Identify personnel requiring access, start clearance or waiver process early, and track access dependencies.",
+          trigger:
+            "Specification includes HSPD-12, security clearance, site access, or restricted document access requirements.",
+        });
+      }
+
+      if (
+        text.includes("cpm") ||
+        text.includes("schedule") ||
+        text.includes("time impact analysis") ||
+        text.includes("tia") ||
+        !source.extractedText
+      ) {
+        addRisk({
+          risk: "CPM schedule compliance / TIA entitlement risk",
+          category: "Schedule",
+          confidence: source.extractedText ? "High" : "Medium",
+          probability: 4,
+          impact: 5,
+          owner: "Project Controls",
+          mitigation:
+            "Confirm CPM schedule requirements, monthly update requirements, TIA submission windows, and delay documentation procedures.",
+          trigger:
+            "Specification includes CPM schedule, float, recovery schedule, time impact analysis, or monthly update requirements.",
+        });
+      }
+    }
+
+    if (source.type === "Permit") {
+      addRisk({
+        risk: `Permit approval or jurisdictional delay risk: ${sourceName}`,
+        category: "Compliance",
+        confidence: source.extractedText ? "High" : "Medium",
+        probability: 4,
+        impact: 4,
+        owner: "Project Manager",
+        mitigation:
+          "Build permit approval dates into the schedule, assign permit owners, and track authority review timelines.",
+        trigger:
+          "Permit source uploaded for risk review.",
+      });
+    }
+
+    if (source.type === "Risk Assessment") {
+      addRisk({
+        risk: `Risk assessment items require executive review: ${sourceName}`,
+        category: "Executive",
+        confidence: source.extractedText ? "High" : "Medium",
+        probability: 3,
+        impact: 4,
+        owner: "Project Executive",
+        mitigation:
+          "Review uploaded risk assessment, confirm high-priority risks, assign owners, and accept relevant items into the Risk Playbook.",
+        trigger:
+          "Risk assessment uploaded for executive risk review.",
+      });
+    }
+
+    if (source.type === "Pursuit") {
+      addRisk({
+        risk: `Go / No-Go pursuit profile requires executive risk review: ${sourceName}`,
+        category: "Strategic",
+        confidence: source.extractedText ? "High" : "Medium",
+        probability: 3,
+        impact: 4,
+        owner: "Project Executive",
+        mitigation:
+          "Review pursuit profile, confirm strategic risks, and document executive go/no-go assumptions.",
+        trigger:
+          "Go / No-Go profile uploaded.",
+      });
+    }
+  });
+
+  return generated;
+}
 function loadDemoSuggestedRisks() {
   
 
@@ -919,8 +1114,38 @@ constraints.forEach((constraint) => {
   });
   
 
-  const contractRisks = [];
-  const revenueRisks = [];
+  const contractRisks = generateContractClauseRisks();
+
+const uploadedSourceRisks = riskSources
+  .filter((source) =>
+    ["Specification", "Permit", "Risk Assessment", "Pursuit"].includes(source.type)
+  )
+  .map((source) => ({
+    id: crypto.randomUUID(),
+    risk: `${source.type} uploaded for executive risk review: ${source.name}`,
+    category:
+      source.type === "Specification"
+        ? "Compliance"
+        : source.type === "Permit"
+        ? "Schedule"
+        : source.type === "Pursuit"
+        ? "Strategic"
+        : "Executive",
+    source: source.type,
+    confidence: source.extractedText ? "High" : "Medium",
+    probability: 3,
+    impact: 4,
+    owner: "Project Executive",
+    mitigation:
+      "Review uploaded source, identify project-specific obligations, assign owners, and convert applicable items into the Risk Playbook.",
+    trigger: `${source.type} uploaded. ${
+      source.extractedText
+        ? "Text was available for review."
+        : "Text extraction is pending, so Sentinel generated a review risk from the uploaded source type."
+    }`,
+  }));
+
+const revenueRisks = [];
 
 if (scheduleSnapshots.length >= 2) {
   const previousSnapshot = scheduleSnapshots[scheduleSnapshots.length - 2];
@@ -992,6 +1217,7 @@ const generatedRisks = [
   ...projectHealthRisks,
   ...revenueRisks,
   ...contractRisks,
+  ...uploadedSourceRisks,
 ];
 const uniqueGeneratedRisks = generatedRisks.filter(
   (risk, index, self) =>
