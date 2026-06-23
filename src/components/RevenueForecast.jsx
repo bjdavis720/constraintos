@@ -3,6 +3,7 @@ function RevenueForecast({
   project = "",
   scheduleSnapshots = [],
   revenueHistory = [],
+  milestones = [],
   updateCurrentProjectData,
 }) {
   const previousSnapshot =
@@ -398,6 +399,75 @@ function getPointPosition(row, index, rows, valueKey) {
 
   return { x, y };
 }
+function getMilestoneStatusClass(status = "") {
+  return String(status).replaceAll(" ", "-").toLowerCase();
+}
+
+function getNext90DayMilestones() {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const ninetyDaysOut = new Date(today);
+  ninetyDaysOut.setDate(today.getDate() + 90);
+
+  return (milestones || [])
+    .filter((milestone) => !milestone.archived)
+    .filter((milestone) => {
+      const milestoneDateValue =
+        milestone.due ||
+        milestone.finish ||
+        milestone.date ||
+        milestone.targetDate;
+
+      const milestoneDate = milestoneDateValue
+        ? new Date(milestoneDateValue)
+        : null;
+
+      if (!milestoneDate || Number.isNaN(milestoneDate.getTime())) {
+        return false;
+      }
+
+      return milestoneDate >= today && milestoneDate <= ninetyDaysOut;
+    });
+}
+
+function getMilestoneMonthKey(milestone) {
+  const milestoneDateValue =
+    milestone.due ||
+    milestone.finish ||
+    milestone.date ||
+    milestone.targetDate;
+
+  const milestoneDate = new Date(milestoneDateValue);
+
+  if (Number.isNaN(milestoneDate.getTime())) return null;
+
+  return `${milestoneDate.getFullYear()}-${String(
+    milestoneDate.getMonth() + 1
+  ).padStart(2, "0")}`;
+}
+
+function getMilestoneChartPosition(milestone) {
+  const monthKey = getMilestoneMonthKey(milestone);
+  const rowIndex = forecastRows.findIndex((row) => row.monthKey === monthKey);
+
+  if (rowIndex < 0) return null;
+
+  const row = forecastRows[rowIndex];
+
+  const { x, y } = getPointPosition(
+    row,
+    rowIndex,
+    forecastRows,
+    "currentCumulative"
+  );
+
+  return {
+    x,
+    y: y - 22,
+    row,
+  };
+}
 
 function buildLinePath(rows, valueKey) {
   if (!rows.length) return "";
@@ -708,6 +778,56 @@ function scrollToRevenueSection(sectionId) {
       );
     })
   )}
+    {getNext90DayMilestones().map((milestone, milestoneIndex, milestoneArray) => {
+  const position = getMilestoneChartPosition(milestone);
+
+  if (!position) return null;
+
+  const statusClass = getMilestoneStatusClass(milestone.status);
+  const milestoneMonthKey = getMilestoneMonthKey(milestone);
+
+  const sameMonthIndex = milestoneArray
+    .filter((item) => getMilestoneMonthKey(item) === milestoneMonthKey)
+    .findIndex((item) => item.id === milestone.id);
+
+  const offsetX = sameMonthIndex * 22;
+  const offsetY = sameMonthIndex * -12;
+
+  return (
+    <g
+      key={`milestone-${milestone.id}`}
+      className={`scurve-milestone ${statusClass}`}
+    >
+      <title>
+        {`${milestone.name}
+Date: ${milestone.due || milestone.finish || "-"}
+Status: ${milestone.status || "Not Set"}
+Source: Pull Plan / Next 90 Days`}
+      </title>
+
+      {["at-risk", "off-track"].includes(statusClass) && (
+  <line
+    x1={position.x + offsetX}
+    x2={position.x + offsetX}
+    y1={position.y + offsetY + 12}
+    y2={chartBottom}
+    className={`scurve-milestone-risk-line ${statusClass}`}
+  />
+)}
+
+<rect
+  x={position.x + offsetX - 7}
+  y={position.y + offsetY - 7}
+  width="14"
+  height="14"
+  transform={`rotate(45 ${position.x + offsetX} ${
+    position.y + offsetY
+  })`}
+  className={`scurve-milestone-diamond ${statusClass}`}
+/>
+    </g>
+  );
+})}
 
   <line
     x1={chartPaddingX}

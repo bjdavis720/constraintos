@@ -1431,11 +1431,12 @@ deleteTeamMember={deleteTeamMember}
   {activePage === "Revenue Forecast" &&
   (selectedProject ? (
     <RevenueForecast
-      project={projectName}
-      scheduleSnapshots={scheduleSnapshots}
-      revenueHistory={revenueHistory}
-      updateCurrentProjectData={updateCurrentProjectData}
-    />
+  project={projectName}
+  scheduleSnapshots={scheduleSnapshots}
+  revenueHistory={revenueHistory}
+  milestones={milestones}
+  updateCurrentProjectData={updateCurrentProjectData}
+/>
   ) : (
     renderNoProjectSelected()
   ))}

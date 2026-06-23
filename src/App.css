@@ -5517,3 +5517,43 @@ textarea.form-input {
   filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.28));
   transform: translateY(3px);
 }
+.scurve-milestone-diamond {
+  fill: #2563eb;
+  stroke: #ffffff;
+  stroke-width: 2;
+  cursor: pointer;
+}
+
+.scurve-milestone-diamond.complete {
+  fill: #22c55e;
+}
+
+.scurve-milestone-diamond.at-risk {
+  fill: #f97316;
+}
+
+.scurve-milestone-diamond.off-track {
+  fill: #dc2626;
+}
+
+.scurve-milestone-diamond.imported {
+  fill: #64748b;
+}
+
+.scurve-milestone-diamond.on-track {
+  fill: #2563eb;
+}
+.scurve-milestone-risk-line {
+  stroke-width: 2;
+  stroke-dasharray: 6 6;
+  opacity: 0.85;
+  pointer-events: none;
+}
+
+.scurve-milestone-risk-line.at-risk {
+  stroke: #f97316;
+}
+
+.scurve-milestone-risk-line.off-track {
+  stroke: #dc2626;
+}

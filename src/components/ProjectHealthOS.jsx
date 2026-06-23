@@ -2,6 +2,12 @@ import { useState } from "react";
 import ModuleHeader from "./ModuleHeader.jsx";
 import * as XLSX from "xlsx";
 
+function getCurrentReviewMonth() {
+  return new Date().toLocaleString("default", {
+    month: "long",
+    year: "numeric",
+  });
+}
 function ProjectHealthOS({
   project,
   projectHealthOS,
@@ -9,11 +15,12 @@ function ProjectHealthOS({
   teamMembers = [],
 }) {
   const healthData = projectHealthOS || {
-    reviewItems: [],
-    issues: [],
-    todos: [],
-    reviewHistory: [],
-  };
+  reviewItems: [],
+  issues: [],
+  todos: [],
+  reviewHistory: [],
+  reviews: [],
+};
   
   const reviewItems = healthData.reviewItems || [];
   const issues = healthData.issues || [];
@@ -28,6 +35,28 @@ const [expandedHeadings, setExpandedHeadings] = useState({});
       ...updates,
     });
   }
+  function completeMonthlyReview() {
+  const reviewMonth = getCurrentReviewMonth();
+  const existingReviews = healthData.reviews || [];
+
+  const filteredReviews = existingReviews.filter(
+    (review) => review.reviewMonth !== reviewMonth
+  );
+
+  const newReview = {
+    id: crypto.randomUUID(),
+    reviewMonth,
+    completedDate: new Date().toISOString(),
+    status: "Complete",
+    source: "ProjectHealthOS",
+  };
+
+  saveHealthData({
+    reviews: [...filteredReviews, newReview],
+  });
+
+  alert(`${reviewMonth} Project Health Review marked complete.`);
+}
 
   function addReviewItem(e) {
     e.preventDefault();
@@ -477,6 +506,13 @@ function scrollToHealthSection(sectionId) {
   <div id="review-items" className="data-card project-health-review-card">
   <div className="section-header-row">
     <h2>Review Items</h2>
+    <button
+    type="button"
+    className="primary-button"
+    onClick={completeMonthlyReview}
+  >
+    Complete Monthly Review
+  </button>
   </div>
 
   {reviewItems.length === 0 && (
@@ -570,6 +606,7 @@ function scrollToHealthSection(sectionId) {
                       placeholder="Notes..."
                     />
                   </td>
+                  
 
                   <td>
                     <button
