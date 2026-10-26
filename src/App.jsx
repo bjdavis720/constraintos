@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import "./App.css";
 import SentinelHome from "./components/SentinelHome.jsx";
 import Sidebar from "./components/Sidebar.jsx";
+import CostLoadingIntelligence from "./components/CostLoadingIntelligence.jsx";
 import Metric from "./components/Metric.jsx";
 import ProjectSetup from "./pages/ProjectSetup.jsx";
 import ScheduleMilestones from "./pages/ScheduleMilestones.jsx";
@@ -987,6 +988,7 @@ useEffect(() => {
 }
 const constraintOSPages = [
   "Schedule Intelligence",
+  "Cost Loading Intelligence",
   "4-Week Look Ahead and Sprint Plan",
   "Submittal Readiness",
   "Schedule Milestones",
@@ -1001,6 +1003,7 @@ const isConstraintOSPage = constraintOSPages.includes(activePage);
 
 const constraintNavIcons = {
   "Schedule Intelligence": "📊",
+  "Cost Loading Intelligence": "💰",
   "4-Week Look Ahead and Sprint Plan": "🗓️",
   "Submittal Readiness": "📄",
   "Schedule Milestones": "🎯",
@@ -1429,6 +1432,10 @@ deleteTeamMember={deleteTeamMember}
       renderNoProjectSelected()
     )
   )}
+  {activePage === "Cost Loading Intelligence" &&
+    renderConstraintOSShell(selectedProject ? (
+      <CostLoadingIntelligence projectName={projectName} />
+    ) : renderNoProjectSelected())}
   {activePage === "Revenue Forecast" &&
   (selectedProject ? (
     <RevenueForecast
@@ -1631,6 +1638,7 @@ deleteTeamMember={deleteTeamMember}
   "Project Setup",
   "Executive Dashboard",
   "Schedule Intelligence",
+  "Cost Loading Intelligence",
   "TIA Intelligence",
   "Revenue Forecast",
   "RiskIntegratorOS",

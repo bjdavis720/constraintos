@@ -7,6 +7,7 @@ function Sidebar({
 }) {
   const constraintOSPages = [
     "Schedule Intelligence",
+    "Cost Loading Intelligence",
     "4-Week Look Ahead and Sprint Plan",
     "Submittal Readiness",
     "Schedule Milestones",
@@ -43,6 +44,7 @@ function Sidebar({
   : [];
 const navIcons = {
   "Schedule Intelligence": "📊",
+  "Cost Loading Intelligence": "💰",
   "4-Week Look Ahead and Sprint Plan": "🗓️",
   "Submittal Readiness": "📄",
   "Schedule Milestones": "🎯",
