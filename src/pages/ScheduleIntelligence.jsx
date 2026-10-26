@@ -107,12 +107,130 @@ function ScheduleIntelligence({
   updateCurrentProjectData,
   issues = [],
   milestones = [],
+  riskPlaybook = [],
   importMilestones,
   importIssuesFromSchedule,
 }) {
   const [comparisonResults, setComparisonResults] = useState(null);
   const [selectedMilestones, setSelectedMilestones] = useState({});
   const [activityFilter, setActivityFilter] = useState("critical");
+  const [scheduleNarrative, setScheduleNarrative] = useState("");
+  function generateScheduleNarrative() {
+  if (!comparisonResults) {
+    alert("Upload at least two schedule snapshots before generating a narrative.");
+    return;
+  }
+
+  const slipped = comparisonResults.slippedActivities.length;
+  const recovered = comparisonResults.recoveredActivities.length;
+  const newCritical = comparisonResults.newCriticalActivities.length;
+  const floatErosion = comparisonResults.floatErosion.length;
+
+  const recoveredList = comparisonResults.recoveredActivities
+    .slice(0, 10)
+    .map((activity) => `• ${activity.activityName}`)
+    .join("\n");
+
+  const slippedList = comparisonResults.slippedActivities
+    .slice(0, 10)
+    .map((activity) => `• ${activity.activityName}`)
+    .join("\n");
+
+  const completedThisPeriod = latestActivities
+    .filter((activity) => {
+      const percentComplete = Number(
+        activity.percentComplete || activity.percent || 0
+      );
+
+      return percentComplete === 100;
+    })
+    .slice(0, 15)
+    .map((activity) => `• ${activity.activityName}`)
+    .join("\n");
+
+  const today = new Date();
+
+  const thirtyDaysOut = new Date();
+  thirtyDaysOut.setDate(today.getDate() + 30);
+
+  const plannedNextPeriod = latestActivities
+    .filter((activity) => {
+      const startDate = activity.start ? new Date(activity.start) : null;
+
+      if (!startDate || isNaN(startDate)) return false;
+
+      return startDate >= today && startDate <= thirtyDaysOut;
+    })
+    .slice(0, 15)
+    .map((activity) => `• ${activity.activityName} (${activity.start})`)
+    .join("\n");
+
+  const milestoneStatus = milestones
+    .filter((milestone) => !milestone.archived)
+    .slice(0, 15)
+    .map(
+      (milestone) =>
+        `• ${milestone.name} — ${milestone.due || "No date"} — ${
+          milestone.status || "No status"
+        }`
+    )
+    .join("\n");
+    const topRisks = riskPlaybook
+  .filter((risk) => risk.status !== "Closed")
+  .sort((a, b) => {
+    const scoreA = Number(a.probability || 0) * Number(a.impact || 0);
+    const scoreB = Number(b.probability || 0) * Number(b.impact || 0);
+
+    return scoreB - scoreA;
+  })
+  .slice(0, 5)
+  .map(
+    (risk) =>
+      `• ${risk.risk || risk.title || "Unnamed Risk"} — ${
+        risk.owner || "Unassigned"
+      }`
+  )
+  .join("\n");
+
+  const narrative = `
+EXECUTIVE SUMMARY
+
+This update identified ${slipped} slipped activities, ${recovered} recovered activities, ${floatErosion} float erosion activities, and ${newCritical} newly critical activities.
+
+PROGRESS ACHIEVED THIS PERIOD
+
+${completedThisPeriod || "No completed activities were identified in the current schedule snapshot."}
+
+RECOVERED ACTIVITIES
+
+${recoveredList || "No recovered activities were identified during this update period."}
+
+WORK PLANNED FOR NEXT PERIOD
+
+${plannedNextPeriod || "No planned activities were identified in the next 30 days based on the current schedule snapshot."}
+
+MILESTONE STATUS
+
+${milestoneStatus || "No active milestones are currently tracked for this project."}
+
+TOP ACTIVE RISKS
+
+${topRisks || "No active RiskIntegratorOS risks are currently linked to this project."}
+
+AREAS REQUIRING ATTENTION
+
+${slippedList || "No slipped activities were identified during this update period."}
+
+SCHEDULE RISKS
+
+Float erosion activities identified: ${floatErosion}
+New critical activities identified: ${newCritical}
+`;
+setScheduleNarrative(narrative.trim());
+  navigator.clipboard.writeText(narrative.trim());
+
+  alert("Schedule narrative copied to clipboard.");
+}
 
   const [collapsedSections, setCollapsedSections] = useState({
     slippedActivities: true,
@@ -533,7 +651,46 @@ function ScheduleIntelligence({
               </div>
             </div>
           </div>
+<div className="card">
+  <div className="section-header-row">
+    <h3>Monthly Schedule Narrative</h3>
 
+    <button
+  type="button"
+  className="secondary-button"
+  onClick={generateScheduleNarrative}
+>
+  Generate Narrative
+</button>
+  </div>
+
+  <p>
+    Generate a draft monthly schedule narrative
+    based on current schedule intelligence.
+  </p>
+</div>
+{scheduleNarrative && (
+  <div className="card">
+    <div className="section-header-row">
+      <h3>Generated Narrative Preview</h3>
+
+      <button
+        type="button"
+        className="secondary-button small-button"
+        onClick={() => {
+          navigator.clipboard.writeText(scheduleNarrative);
+          alert("Schedule narrative copied to clipboard.");
+        }}
+      >
+        Copy Narrative
+      </button>
+    </div>
+
+    <pre className="narrative-preview">
+      {scheduleNarrative}
+    </pre>
+  </div>
+)}
           <DeltaTable
             sectionKey="slippedActivities"
             collapsed={collapsedSections.slippedActivities}

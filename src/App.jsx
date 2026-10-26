@@ -1423,6 +1423,7 @@ deleteTeamMember={deleteTeamMember}
         milestones={milestones}
         importMilestones={importMilestones}
         importIssuesFromSchedule={importIssuesFromSchedule}
+        riskPlaybook={riskPlaybook}
       />
     ) : (
       renderNoProjectSelected()
