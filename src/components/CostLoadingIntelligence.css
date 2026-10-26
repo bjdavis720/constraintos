@@ -7,3 +7,5 @@
 .cli-group-row {background:#e9f0f8;font-weight:600;}
 .cli-group-row td {position:relative;}
 .cli-table-wrap th {z-index:1;}
+
+.cli-sheet-list{display:grid;gap:8px;max-height:260px;overflow:auto}.cli-sheet-list details{border:1px solid #d9e0e8;border-radius:6px;padding:8px}.cli-sheet-list summary{cursor:pointer;font-weight:600}.cli-panel input[type="number"]{width:165px;max-width:100%;padding:6px}.cli-panel input[type="file"]{max-width:100%}.cli-panel select{padding:7px}

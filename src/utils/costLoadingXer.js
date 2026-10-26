@@ -38,6 +38,23 @@ export function auditCostLoadingXer(text) {
     if (resource) old.resources.add(resource.rsrc_short_name || resource.rsrc_name || r.rsrc_id);
     byTask.set(r.task_id, old);
   }
+  const activityCodeDiagnostics = activityCodeTypes.map(type => {
+    const matching = tasks.filter(task => codesByTask.get(task.task_id)?.[type.id]);
+    const values = new Map();
+    for (const task of matching) {
+      const code = codesByTask.get(task.task_id)[type.id];
+      const key = `${code.code} — ${code.description}`;
+      values.set(key, (values.get(key) || 0) + 1);
+    }
+    return { ...type, assignedActivities: matching.length, distinctValues: values.size,
+      values: [...values].sort((a,b) => b[1]-a[1]).map(([label,count]) => ({label,count})) };
+  });
+  const assignmentDiagnostics = assignments.reduce((out,r) => {
+    const budget=amount(r.target_cost), actual=amount(r.act_reg_cost)+amount(r.act_ot_cost), remaining=amount(r.remain_cost);
+    if (Math.abs(budget-actual-remaining)>0.01) {out.count++;out.difference+=budget-actual-remaining;}
+    if (remaining<0) out.negativeRemaining++;
+    return out;
+  },{count:0,difference:0,negativeRemaining:0});
   const activities = tasks.map(t => {
     const a = byTask.get(t.task_id);
     const w = wbsById.get(t.wbs_id);
@@ -46,5 +63,5 @@ export function auditCostLoadingXer(text) {
   const totals = activities.reduce((v,a)=>({budget:v.budget+a.budget,actual:v.actual+a.actual,remaining:v.remaining+a.remaining}),{budget:0,actual:0,remaining:0});
   const group = new Map();
   for (const a of activities) { const g = group.get(a.wbsId) || {wbs:a.wbs, count:0, budget:0}; g.count++; g.budget+=a.budget; group.set(a.wbsId,g); }
-  return {activities, totals, wbs:[...group.values()].sort((a,b)=>b.budget-a.budget), activityCodeTypes, resources:resources.map(r=>({id:r.rsrc_id, code:r.rsrc_short_name, name:r.rsrc_name, type:r.rsrc_type})), activityCount:tasks.length, assignmentCount:assignments.length, unassignedCount:activities.filter(a=>!a.assignments).length, tables:Object.keys(tables).length};
+  return {activities, totals, wbs:[...group.values()].sort((a,b)=>b.budget-a.budget), activityCodeTypes, activityCodeDiagnostics, assignmentDiagnostics, resources:resources.map(r=>({id:r.rsrc_id, code:r.rsrc_short_name, name:r.rsrc_name, type:r.rsrc_type})), activityCount:tasks.length, assignmentCount:assignments.length, unassignedCount:activities.filter(a=>!a.assignments).length, tables:Object.keys(tables).length};
 }
