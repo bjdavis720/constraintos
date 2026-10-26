@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import * as XLSX from "xlsx";
 import { auditCostLoadingXer } from "../utils/costLoadingXer.js";
+import { createMatchingReview, exportMatchingReview } from "../utils/costLoadingMatching.js";
 import "./CostLoadingIntelligence.css";
 
 const AWARDED_CLINS = [
@@ -32,6 +33,8 @@ export default function CostLoadingIntelligence({projectName}) {
   const [audit,setAudit] = useState(null);
   const [estimate,setEstimate] = useState(null);
   const [estimateError,setEstimateError] = useState("");
+  const [matchingError,setMatchingError] = useState("");
+  const [sourceSheet,setSourceSheet] = useState("Subcontractor Summary");
   const [clins,setClins] = useState(makeClins);
   const [clinCodeType,setClinCodeType] = useState("");
   const [clinFilter,setClinFilter] = useState("all");
@@ -44,12 +47,13 @@ export default function CostLoadingIntelligence({projectName}) {
       const sheets=workbook.SheetNames.map(name=>{
         const ws=workbook.Sheets[name];
         const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:"",raw:false});
-        return {name,rowCount:rows.filter(row=>row.some(value=>String(value).trim())).length,preview:rows.filter(row=>row.some(value=>String(value).trim())).slice(0,8).map(row=>row.slice(0,7))};
+        return {name,rowCount:rows.filter(row=>row.some(value=>String(value).trim())).length,preview:rows.filter(row=>row.some(value=>String(value).trim())).slice(0,8).map(row=>row.slice(0,7)),rows};
       });
       setEstimate({filename:file.name,sheets});
     } catch(err){setEstimateError(err.message||"Unable to read estimate.");}
   }
   function changeClin(id,field,value) {setClins(old=>old.map(c=>c.id===id?{...c,[field]:value}:c));}
+  const matching=useMemo(()=> audit && estimate ? createMatchingReview(audit,estimate,sourceSheet,clins) : null,[audit,estimate,sourceSheet,clins]);
   const selectedTotal=clins.reduce((sum,c)=>sum+(c.accepted?(Number(c.amount)||0):0),0);
   const selectedClinDiagnostic = audit?.activityCodeDiagnostics?.find(t=>t.id===clinCodeType);
   const clinSummary=useMemo(()=>{
@@ -108,6 +112,19 @@ export default function CostLoadingIntelligence({projectName}) {
       {estimate && <><strong>{estimate.filename} — {estimate.sheets.length} worksheets</strong><div className="cli-sheet-list">{estimate.sheets.map(sh=><details key={sh.name}><summary>{sh.name} — {sh.rowCount} populated rows</summary><div className="cli-table-wrap"><table><tbody>{sh.preview.map((row,i)=><tr key={i}>{row.map((v,j)=><td key={j}>{String(v)}</td>)}</tr>)}</tbody></table></div></details>)}</div></>}
       <div className="cli-table-wrap"><table><thead><tr><th>Accepted</th><th>CLIN</th><th>Description</th><th>Awarded value (editable)</th></tr></thead><tbody>{clins.map(c=><tr key={c.id}><td><input aria-label={`Accepted CLIN ${c.id}`} type="checkbox" checked={c.accepted} onChange={e=>changeClin(c.id,"accepted",e.target.checked)}/></td><td>{c.id}</td><td>{c.name}</td><td><input aria-label={`Awarded value CLIN ${c.id}`} type="number" min="0" step="0.01" value={c.amount} onChange={e=>changeClin(c.id,"amount",e.target.value)}/></td></tr>)}</tbody></table></div>
       <strong>Selected awarded CLIN total: {usd(selectedTotal)}</strong>
+      {audit && estimate && <div className="cli-matching">
+        <h3>Estimate-to-activity candidate matching — review only</h3>
+        <p className="cli-footnote">The selected estimate sheet is used to propose activity relationships. Amounts from the estimate are reference values only; excluded options, duplicated summaries, and CLIN allocations are NOT automatically approved. No XER changes are made.</p>
+        <label>Estimate source worksheet <select value={sourceSheet} onChange={e=>setSourceSheet(e.target.value)}>{estimate.sheets.map(sh=><option key={sh.name} value={sh.name}>{sh.name}</option>)}</select></label>
+        <p>{matching?.items.length || 0} source rows · {matching?.matched || 0} with candidate activities · {matching?.unmatched || 0} requiring manual mapping.</p>
+        {matchingError && <p role="alert" className="cli-error">{matchingError}</p>}
+        <button type="button" onClick={()=>{try{setMatchingError("");exportMatchingReview(matching, audit, clins, estimate.filename);}catch(e){setMatchingError(e.message||"Unable to generate workbook.");}}}>Download Excel matching review</button>
+        <div className="cli-table-wrap"><table><thead><tr><th>Estimate source row</th><th>Scope description</th><th>Reference amount</th><th>Suggested activity</th><th>Confidence</th><th>Review status</th></tr></thead><tbody>
+        {matching?.items.slice(0,60).map(item=><tr key={item.key}><td>{item.row}</td><td>{item.description}</td><td>{item.referenceAmount == null ? "—" : usd(item.referenceAmount)}</td><td>{item.candidate?.activityId || "Unmatched"} {item.candidate?.name || ""}</td><td>{item.confidence}</td><td>Needs review</td></tr>)}
+        </tbody></table></div>
+        <p className="cli-footnote">Showing first 60 rows; the Excel export includes all candidate rows and the full activity inventory. The approved allocation columns start blank.</p>
+      </div>}
+
       <p className="cli-footnote">Award values are contract values, not estimated direct costs.  Changes are local to this page and are not yet saved to project data.</p>
     </div>
     {audit && <div className="cli-panel"><h3>CLIN reconciliation — preliminary</h3>
