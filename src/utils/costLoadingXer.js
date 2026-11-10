@@ -38,6 +38,73 @@ export function auditCostLoadingXer(text) {
     if (resource) old.resources.add(resource.rsrc_short_name || resource.rsrc_name || r.rsrc_id);
     byTask.set(r.task_id, old);
   }
+  // Patch 05C: assignment-level holding-account diagnostics, read-only.
+  // Do not infer transferable funds solely from a TASK budget.
+  const holdingTasks = tasks.filter(t => {
+    const activityId = String(t.task_code || "").trim();
+    const activityName = String(t.task_name || "").trim();
+    // P6 uses the letter O in LOE10000, not the numeral zero.
+    // Retain the old spelling as a fallback for schedules using that ID.
+    return /^(?:LOE10000|L0E10000)$/i.test(activityId)
+      || /^construction cost$/i.test(activityName)
+      || /construction (?:cost )?(?:holding|lump.sum)/i.test(activityName);
+  });
+  const holdingAccounts = holdingTasks.map(task => {
+    const rows = assignments.filter(r => r.task_id === task.task_id).map(r => {
+      const resource = resourceById.get(r.rsrc_id);
+      const budget = amount(r.target_cost);
+      const actual = amount(r.act_reg_cost) + amount(r.act_ot_cost);
+      const remaining = amount(r.remain_cost);
+      return {
+        assignmentId: r.taskrsrc_id || "", resourceId: r.rsrc_id || "",
+        resourceCode: resource?.rsrc_short_name || "",
+        resourceName: resource?.rsrc_name || "",
+        budget, actual, remaining,
+        difference: budget - actual - remaining,
+        resourceType: resource?.rsrc_type || "",
+        // Patch 05D: preserve original XER assignment fields as text.  Do not
+        // infer rates or convert units: Primavera exports vary by version.
+        xerFields: Object.entries(r)
+          .filter(([key]) => /(?:cost|qty|unit|rate|price|curv|target|remain|act_|ot_|rsrc)/i.test(key))
+          .map(([field, value]) => ({ field, value: String(value ?? "") })),
+
+      };
+    });
+    const budget = rows.reduce((v,r)=>v+r.budget,0);
+    const actual = rows.reduce((v,r)=>v+r.actual,0);
+    const remaining = rows.reduce((v,r)=>v+r.remaining,0);
+    return {
+      taskId: task.task_id, activityId: task.task_code || "", name: task.task_name || "",
+      budget, actual, remaining, difference: budget - actual - remaining,
+      assignments: rows,
+      hasDiscrepancies: rows.some(r=>Math.abs(r.difference)>0.01 || r.remaining<0),
+    };
+  });
+  // Patch 05G: read-only receiving-activity resource assignment inventory.
+  // Preserve raw fields for auditing; never mutate the source XER.
+  const assignmentDetailsByTask = {};
+  for (const r of assignments) {
+    const resource = resourceById.get(r.rsrc_id);
+    const record = {
+      assignmentId: r.taskrsrc_id || "",
+      taskId: r.task_id || "",
+      resourceId: r.rsrc_id || "",
+      resourceCode: resource?.rsrc_short_name || "",
+      resourceName: resource?.rsrc_name || "",
+      resourceType: r.rsrc_type || resource?.rsrc_type || "",
+      budget: amount(r.target_cost),
+      actual: amount(r.act_reg_cost) + amount(r.act_ot_cost),
+      remaining: amount(r.remain_cost),
+      targetQty: r.target_qty ?? "",
+      remainQty: r.remain_qty ?? "",
+      actualQty: r.act_reg_qty ?? "",
+      costPerQty: r.cost_per_qty ?? "",
+      rateType: r.rate_type ?? "",
+      costQtyLinkFlag: r.cost_qty_link_flag ?? "",
+      xerFields: Object.entries(r).map(([field,value]) => ({field,value:String(value ?? "")})),
+    };
+    (assignmentDetailsByTask[r.task_id] ||= []).push(record);
+  }
   const activityCodeDiagnostics = activityCodeTypes.map(type => {
     const matching = tasks.filter(task => codesByTask.get(task.task_id)?.[type.id]);
     const values = new Map();
@@ -63,5 +130,5 @@ export function auditCostLoadingXer(text) {
   const totals = activities.reduce((v,a)=>({budget:v.budget+a.budget,actual:v.actual+a.actual,remaining:v.remaining+a.remaining}),{budget:0,actual:0,remaining:0});
   const group = new Map();
   for (const a of activities) { const g = group.get(a.wbsId) || {wbs:a.wbs, count:0, budget:0}; g.count++; g.budget+=a.budget; group.set(a.wbsId,g); }
-  return {activities, totals, wbs:[...group.values()].sort((a,b)=>b.budget-a.budget), activityCodeTypes, activityCodeDiagnostics, assignmentDiagnostics, resources:resources.map(r=>({id:r.rsrc_id, code:r.rsrc_short_name, name:r.rsrc_name, type:r.rsrc_type})), activityCount:tasks.length, assignmentCount:assignments.length, unassignedCount:activities.filter(a=>!a.assignments).length, tables:Object.keys(tables).length};
+  return {activities, totals, holdingAccounts, assignmentDetailsByTask, wbs:[...group.values()].sort((a,b)=>b.budget-a.budget), activityCodeTypes, activityCodeDiagnostics, assignmentDiagnostics, resources:resources.map(r=>({id:r.rsrc_id, code:r.rsrc_short_name, name:r.rsrc_name, type:r.rsrc_type})), activityCount:tasks.length, assignmentCount:assignments.length, unassignedCount:activities.filter(a=>!a.assignments).length, tables:Object.keys(tables).length};
 }

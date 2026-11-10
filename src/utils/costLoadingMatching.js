@@ -18,8 +18,6 @@ function sourceRows(sheet) {
     referenceAmount:amount(cell(r,summary?7:6))
   })).filter(x=>x.description && x.referenceAmount!==null && x.referenceAmount!==0 && !/\b(grand total|subtotal|total|summary total)\b/i.test(x.description));
 }
-const admin = /\b(submittals?|review|approval|meeting|milestone|tracking|documentation|documents|submit|design|permit|inspection|testing|start|finish|complete|completion|acceptance|coordination|workshop|procure(?:ment)?|shop drawing|mockup)\b/i;
-const direct = /\b(place|pour|form|erect|set|construct|excavate|backfill|grade|pave|demolish|remove|install|rough in|wire|pull|terminate|coat|paint|roof|finish|commission)\b/i;
 // Conservative scope families: an activity must share the estimate's scope family.
 // Generic terms such as "site", "structure", and "work" are deliberately not sufficient.
 const families = [
@@ -45,7 +43,7 @@ const broadScope = /^(sitework|structure|substructure|general conditions|other g
 const admin = /\b(submittals?|review|approval|meeting|milestone|tracking|documentation|documents|submit|design|permit|inspection|testing|start|finish|complete|completion|acceptance|coordination|workshop|procure(?:ment)?|shop drawing|mockup|fabricat(?:e|ion)|deliver(?:y)?|notice to proceed)\b/i;
 const direct = /\b(place|pour|form|erect|set|construct|excavate|backfill|grade|pave|demolish|remove|install|rough in|wire|pull|terminate|coat|paint|roof|finish|commission|build|assemble)\b/i;
 function codeText(a){return Object.values(a.codes||{}).map(v=>typeof v==="string"?v:[v?.code,v?.description,v?.name].filter(Boolean).join(" ")).join(" ");}
-function candidateList(item,activities){
+function candidateList(item,activities,limit=20){
  const scope=String(item.description||"");
  if(broadScope.test(scope.trim()))return [];
  const family=families.find(f=>f.estimate.test(scope));
@@ -69,8 +67,19 @@ function candidateList(item,activities){
   const cHits=itemWords.filter(t=>codes.includes(t));
   const score=12+hits.length*5+wHits.length*2+Math.min(cHits.length,3)*2;
   return {activity:a,score,explanation:`Eligible ${family.id} execution activity; description matches ${hits.length}, WBS matches ${wHits.length}, code matches ${cHits.length}. Manual validation required.`};
- }).filter(Boolean).sort((a,b)=>b.score-a.score||String(a.activity.activityId).localeCompare(String(b.activity.activityId))).slice(0,20);
+ }).filter(Boolean).sort((a,b)=>b.score-a.score||String(a.activity.activityId).localeCompare(String(b.activity.activityId))).slice(0,limit);
 }
+// Reuse the same conservative matching rules for the bulk allocation builder.
+// Return the full candidate set rather than the Excel review's top 20.
+export function getPoolActivityCandidates(scope, activities) {
+  if (!String(scope || "").trim()) return [];
+  return candidateList({description: scope}, activities || [], Infinity).map(c => ({
+    activityId: String(c.activity.activityId),
+    score: c.score,
+    explanation: c.explanation,
+  }));
+}
+
 export function createMatchingReview(audit,estimate,sourceSheet,clins){
  const sheet=estimate?.sheets?.find(s=>s.name===sourceSheet);
  const items=sourceRows(sheet).map(item=>{
@@ -81,6 +90,60 @@ export function createMatchingReview(audit,estimate,sourceSheet,clins){
  });
  return {sourceSheet,items,matched:items.filter(x=>x.candidate).length,unmatched:items.filter(x=>!x.candidate).length,clins};
 }
+
+// Patch 05A: editable one-to-many allocation workbook. No XER writes.
+function appendAllocationPlan(wb, review, audit, clins) {
+ const activityIds = new Set((audit?.activities || []).map(a => String(a.activityId)));
+ const clinIds = new Set((clins || []).filter(c => c.accepted).map(c => String(c.id)));
+ const poolHeaders = ["Pool Key", "Estimate Scope", "Source Row", "Estimate Reference $ (NOT APPROVED)", "Approved CLIN (USER)", "Approved Pool $ (USER)", "Selected Activity Count", "Weight Total %", "Allocated $", "Difference $", "Validation", "Notes (USER)"];
+ const lineHeaders = ["Pool Key", "Estimate Scope", "Activity ID (USER)", "Activity Name (Reference)", "WBS (Reference)", "Suggested Rank", "Suggested Score", "Selected? (YES)", "Allocation Weight % (USER)", "Calculated Allocation $", "Approved CLIN (Reference)", "Notes (USER)"];
+ const pools = [poolHeaders];
+ const lines = [lineHeaders];
+ for (const [i, item] of review.items.entries()) {
+  const poolRow = i + 2;
+  const key = `${review.sourceSheet}::${item.row}`;
+  const candidates = item.candidates || [];
+  const rowCount = Math.max(candidates.length + 5, 8);
+  for (let j = 0; j < rowCount; j++) {
+   const c = candidates[j];
+   const a = c?.activity;
+   const lineRow = lines.length + 1;
+   lines.push([key, item.description, a?.activityId || "", a?.name || "", a?.wbs || "", c ? j + 1 : "", c?.score ?? "", "", "", {f:`IF(OR(H${lineRow}<>"YES",I${lineRow}="",C${lineRow}=""),0,IFERROR(INDEX('Cost Pools'!$F$2:$F$${review.items.length+1},MATCH(A${lineRow},'Cost Pools'!$A$2:$A$${review.items.length+1},0))*I${lineRow}/100,0))`}, {f:`IFERROR(INDEX('Cost Pools'!$E$2:$E$${review.items.length+1},MATCH(A${lineRow},'Cost Pools'!$A$2:$A$${review.items.length+1},0)),"")`}, ""]);
+  }
+  const last = lines.length;
+  const count = {f:`COUNTIFS('Activity Allocations'!$A$2:$A$${last},A${poolRow},'Activity Allocations'!$H$2:$H$${last},"YES")`};
+  const weight = {f:`SUMIFS('Activity Allocations'!$I$2:$I$${last},'Activity Allocations'!$A$2:$A$${last},A${poolRow},'Activity Allocations'!$H$2:$H$${last},"YES")`};
+  const allocated = {f:`SUMIF('Activity Allocations'!$A$2:$A$${last},A${poolRow},'Activity Allocations'!$J$2:$J$${last})`};
+  const difference = {f:`IF(F${poolRow}="","",ROUND(F${poolRow}-I${poolRow},2))`};
+  const validation = {f:`IF(AND(E${poolRow}="",F${poolRow}=""),"NOT APPROVED",IF(OR(E${poolRow}="",F${poolRow}=""),"INCOMPLETE",IF(G${poolRow}=0,"NO ACTIVITIES",IF(ABS(H${poolRow}-100)>0.0001,"WEIGHTS NOT 100%",IF(ABS(J${poolRow})>0.01,"OUT OF BALANCE","READY FOR REVIEW")))))`};
+  pools.push([key,item.description,item.row,item.referenceAmount,"","",count,weight,allocated,difference,validation,""]);
+ }
+ const pw = XLSX.utils.aoa_to_sheet(pools);
+ pw['!cols'] = [38,40,14,26,22,24,22,18,20,20,25,35].map(w => ({wch:w}));
+ pw['!autofilter'] = {ref:`A1:L${pools.length}`};
+ XLSX.utils.book_append_sheet(wb,pw,"Cost Pools");
+ const lw = XLSX.utils.aoa_to_sheet(lines);
+ lw['!cols'] = [38,40,22,48,36,16,18,18,26,24,24,35].map(w => ({wch:w}));
+ lw['!autofilter'] = {ref:`A1:L${lines.length}`};
+ XLSX.utils.book_append_sheet(wb,lw,"Activity Allocations");
+ const checks = [["Validation / instruction", "Requirement"],
+  ["One estimate item → many activities", "Each Cost Pool can have any number of selected schedule activities. Use the blank rows below its candidates for manual additions."],
+  ["Cost Pools E", "Enter an awarded CLIN ID only. CLIN selection is a user decision, not inferred from estimate category."],
+  ["Cost Pools F", "Enter approved pool amount, NOT automatically the estimate reference amount."],
+  ["Activity Allocations C", "Enter or replace P6 Activity ID. Verify against P6 Activity Inventory."],
+  ["Activity Allocations H", "Type YES to include a candidate or manually added activity."],
+  ["Activity Allocations I", "Enter a weight as 0–100, e.g. 25 for 25%. Do not enter 0.25."],
+  ["Validation", "Selected weights must total 100%; approved amount must balance. READY FOR REVIEW is NOT approval for XER transfer."],
+  ["Allocation method", "Weights are entered by a reviewer. Schedule duration and activity count are NOT assumed to represent cost."],
+  ["Unmatched scopes", "Use blank allocation rows to enter manually chosen schedule activities; do not force low-confidence matches."],
+  ["Existing assignments", "Do not overwrite design assignments, actuals, or other P6 fields. This workbook does not modify the XER."],
+  ["Duplicate activities", "An activity may appear in multiple cost pools. Reviewer must check for double counting before export."],
+  ["Eligible CLINs", [...clinIds].join(", ")],
+  ["P6 activity inventory", `${activityIds.size} IDs available for manual review`],
+  ["Important", "Excel formulas may require opening in Microsoft Excel or compatible spreadsheet software to recalculate."]];
+ XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(checks),"Allocation Instructions");
+}
+
 export function exportMatchingReview(review,audit,clins,estimateFilename){
  if(!review?.items?.length)throw new Error("No usable estimate scope rows were found in the selected worksheet.");
  const wb=XLSX.utils.book_new();
@@ -95,5 +158,6 @@ export function exportMatchingReview(review,audit,clins,estimateFilename){
  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(inv),"P6 Activity Inventory");
  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([["Accepted","CLIN","Description","Award Value"],...clins.map(c=>[c.accepted?"Yes":"No",c.id,c.name,Number(c.amount)||0])]),"Awarded CLIN Register");
  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([["Sentinel Cost Loading Intelligence — REVIEW ONLY"],["Estimate file",estimateFilename],["Source worksheet",review.sourceSheet],["Source rows",review.items.length],["Candidate matches",review.matched],["Unmatched",review.unmatched],["IMPORTANT","Candidate Activities lists up to 20 eligible suggestions per source row; multiple activities may be needed."],["IMPORTANT","Candidate ranks and scores are heuristic, not approved allocations."],["IMPORTANT","Allocation Weight % is user-entered and must total 100% per approved estimate scope before dollar allocation."],["IMPORTANT","Do not sum reference values across summary worksheets or include unawarded CLINs."],["IMPORTANT","No costs are moved from holding activities. No XER is modified."],["Workflow","Review Candidate Activities and enter approved activity IDs, CLINs and dollars in the Matching Review sheet or later approval workflow."]]),"Instructions");
+ appendAllocationPlan(wb,review,audit,clins);
  XLSX.writeFile(wb,"Sentinel-Cost-Loading-Matching-Review.xlsx");
 }
