@@ -1434,7 +1434,7 @@ deleteTeamMember={deleteTeamMember}
   )}
   {activePage === "Cost Loading Intelligence" &&
     renderConstraintOSShell(selectedProject ? (
-      <CostLoadingIntelligence projectName={projectName} />
+      <CostLoadingIntelligence key={selectedProject?.id || projectName} projectName={projectName} />
     ) : renderNoProjectSelected())}
   {activePage === "Revenue Forecast" &&
   (selectedProject ? (

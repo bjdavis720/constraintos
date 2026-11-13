@@ -1,0 +1,6 @@
+SentinelOS 06I — Final UI cleanup
+Source: SentinelOS-Pre-v1-Release-20261110-1327.zip
+Changed only CostLoadingIntelligence.jsx.
+Updated stale text, primary workflow labels, and collapsed optional legacy Excel TEST XER section.
+All cost calculations, persistence and XER writer utilities unchanged.
+Controlled TEST XER only; production use requires further validation.

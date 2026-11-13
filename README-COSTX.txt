@@ -1,0 +1,1 @@
+CostX Federal Estimate importer and CLIN-local shared-cost distribution. Read source H, stage draft pools only, preserve approved allocations and persistence. Excluded amounts require explicit acknowledgement and remain outside P6 loading. Run npm run build. Export full project JSON before installing.

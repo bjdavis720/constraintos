@@ -1,0 +1,1 @@
+Allocate screen cleanup. Based on SentinelOS Guided Workflow UI patch. Replaces src/components/CostLoadingIntelligence.jsx only. Backup before applying. No cost engine or XER utility changes. Run npm run build in Codespaces.

@@ -1,0 +1,28 @@
+SentinelOS Cost Loading Intelligence — UI Cleanup 02
+
+Base: UI Cleanup 01, created from full source uploaded November 10, 2026.
+
+Removed from visible UI:
+- Legacy Excel-based TEST XER export
+- Archived Excel-baseline P6 re-export comparison
+- Archived Excel allocation workbook import
+- Legacy Excel bulk allocation builder
+- Historical readiness and validation tools
+
+Retained:
+- In-app allocation and approved-pool persistence
+- Controlled in-app TEST XER export and safety acknowledgment
+- Setup XER and estimate imports, awarded CLINs
+- Advanced CLIN/activity-code diagnostics, resource dictionary, detailed activity audit
+- Dashboard and reconciliation preview
+
+Legacy calculation imports/functions remain in the module temporarily to minimize risk.
+No changes to XER writing utilities, persistent storage, or project data schema.
+
+Installation:
+  cd /workspaces/constraintos
+  unzip -o SentinelOS-CostLoading-UI-Cleanup-02.zip
+  npm run build
+  npm run dev
+
+Check existing approved $5M Electrical pool and controlled TEST XER readiness.

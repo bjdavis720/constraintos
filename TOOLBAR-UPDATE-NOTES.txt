@@ -1,0 +1,11 @@
+SentinelOS Cost Loading Intelligence — Storage Toolbar Cleanup
+
+Replaces src/components/CostLoadingIntelligence.jsx from UI Cleanup 02.
+Changes only the visible project-storage toolbar: concise saved status, last-saved time, Export Backup, Import Backup.
+Browser-only persistence remains unchanged. Hover the toolbar for a reminder about local storage.
+Save failures and restore errors remain visible.
+
+Install from Codespaces root:
+  unzip -o SentinelOS-CostLoading-Storage-Toolbar.zip
+  npm run build
+  npm run dev

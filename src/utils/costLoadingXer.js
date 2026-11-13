@@ -125,10 +125,10 @@ export function auditCostLoadingXer(text) {
   const activities = tasks.map(t => {
     const a = byTask.get(t.task_id);
     const w = wbsById.get(t.wbs_id);
-    return {taskId:t.task_id, activityId:t.task_code || "", name:t.task_name || "", wbs:w?.wbs_name || w?.wbs_short_name || "Unassigned", wbsId:t.wbs_id || "", codes:codesByTask.get(t.task_id) || {}, start:t.target_start_date || t.act_start_date || "", budget:a?.budget || 0, actual:a?.actual || 0, remaining:a?.remaining || 0, assignments:a?.count || 0, resources:[...(a?.resources || [])].join(", ")};
+    return {taskId:t.task_id, activityId:t.task_code || "", name:t.task_name || "", wbs:w?.wbs_name || w?.wbs_short_name || "Unassigned", wbsId:t.wbs_id || "", codes:codesByTask.get(t.task_id) || {}, start:t.target_start_date || t.act_start_date || "", finish:t.target_end_date || t.act_end_date || t.early_end_date || "", budget:a?.budget || 0, actual:a?.actual || 0, remaining:a?.remaining || 0, assignments:a?.count || 0, resources:[...(a?.resources || [])].join(", ")};
   });
   const totals = activities.reduce((v,a)=>({budget:v.budget+a.budget,actual:v.actual+a.actual,remaining:v.remaining+a.remaining}),{budget:0,actual:0,remaining:0});
   const group = new Map();
   for (const a of activities) { const g = group.get(a.wbsId) || {wbs:a.wbs, count:0, budget:0}; g.count++; g.budget+=a.budget; group.set(a.wbsId,g); }
-  return {activities, totals, holdingAccounts, assignmentDetailsByTask, wbs:[...group.values()].sort((a,b)=>b.budget-a.budget), activityCodeTypes, activityCodeDiagnostics, assignmentDiagnostics, resources:resources.map(r=>({id:r.rsrc_id, code:r.rsrc_short_name, name:r.rsrc_name, type:r.rsrc_type})), activityCount:tasks.length, assignmentCount:assignments.length, unassignedCount:activities.filter(a=>!a.assignments).length, tables:Object.keys(tables).length};
+  return {activities, wbsNodes:wbs.map(r=>({id:String(r.wbs_id||""),parentId:String(r.parent_wbs_id||""),name:r.wbs_name||r.wbs_short_name||"Unnamed WBS",code:r.wbs_short_name||""})), totals, holdingAccounts, assignmentDetailsByTask, wbs:[...group.values()].sort((a,b)=>b.budget-a.budget), activityCodeTypes, activityCodeDiagnostics, assignmentDiagnostics, resources:resources.map(r=>({id:r.rsrc_id, code:r.rsrc_short_name, name:r.rsrc_name, type:r.rsrc_type})), activityCount:tasks.length, assignmentCount:assignments.length, unassignedCount:activities.filter(a=>!a.assignments).length, tables:Object.keys(tables).length};
 }

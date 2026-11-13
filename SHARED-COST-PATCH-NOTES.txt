@@ -1,0 +1,14 @@
+SentinelOS Shared Cost Loading — Phase 1: safe monthly planning preview
+
+Adds a new Step 3 Shared Costs screen, with per-CLIN and per-category:
+- Recommended monthly allocation with adjustable first-half weighting
+- Manual monthly dollar entry
+- Category totals and balance validation
+- Auto-save and project backup support
+- Detection/warning when approved subcontractor pools already contain shared costs
+
+IMPORTANT: This patch does NOT modify cost-pool amounts, approved allocations, or the TEST XER exporter. Monthly targets are PLANNING ONLY, not exported to P6. A later controlled migration must separate previously embedded shared costs and map monthly targets to eligible P6 activities, then reconcile before TEST XER export. Do not double load the existing approved Electrical/Earthwork pools.
+
+Install: unzip -o SentinelOS-Shared-Cost-Planning-Phase1.zip in /workspaces/constraintos, then npm run build and npm run dev.
+
+Build verification: unable to run Vite in this environment (npm dependencies not fully installed). Please run npm run build in Codespaces and report errors.

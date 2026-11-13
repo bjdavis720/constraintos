@@ -1,0 +1,1 @@
+Phase 5 UI consolidation. Replace src/components/CostLoadingIntelligence.jsx. Keeps tested direct-only utility available internally but removes its separate user-facing export panel. Combined export remains TEST ONLY. Back up project before install. Run npm run build and test in isolated P6.

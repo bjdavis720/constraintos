@@ -1,0 +1,1 @@
+Construction WBS hierarchy filter for Shared Costs Phase 4B. Backup first. Unzip into repository root. Run npm run build. Does not change export logic. Previously selected outside-WBS activities are retained but block approval until reviewed.
