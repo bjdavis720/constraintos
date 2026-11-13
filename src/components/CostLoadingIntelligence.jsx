@@ -16,6 +16,7 @@ import { prepareBudgetOnlyPreview, downloadBudgetOnlyPreview } from "../utils/co
 import { createBudgetOnlyTestXer, downloadBudgetOnlyTestXer } from "../utils/costLoadingXerTestExport.js";
 import { prepareInAppTestXer } from "../utils/costLoadingInAppXer.js";
 import { prepareCombinedSharedTestXer } from "../utils/sharedCostCombinedTestXer.js";
+import { downloadControlledProductionXer, validateControlledProductionXer } from "../utils/costLoadingProductionRelease.js";
 import { reconcileP6Reexport, downloadP6Reconciliation } from "../utils/costLoadingP6Reconciliation.js";
 import { reviewFullConstructionAllocation, downloadFullConstructionReview } from "../utils/costLoadingFullReadiness.js";
 import { buildBulkAllocationWorkbook, downloadBulkAllocationWorkbook } from "../utils/costLoadingBulkAllocation.js";
@@ -489,6 +490,20 @@ export default function CostLoadingIntelligence({projectName}) {
   const inAppTestXer=useMemo(()=>prepareInAppTestXer(audit,inAppBridge,xerSourceBytes),[audit,inAppBridge,xerSourceBytes]);
   const combinedTestXer=useMemo(()=>prepareCombinedSharedTestXer({audit,sourceBytes:xerSourceBytes,directBridge:inAppBridge,readiness:combinedExportReadiness,costX,sharedPlans,months:scheduleAvailableMonths}),[audit,xerSourceBytes,inAppBridge,combinedExportReadiness,costX,sharedPlans,scheduleAvailableMonths]);
   const [combinedTestAcknowledged,setCombinedTestAcknowledged]=useState(false);
+  const [productionApproved,setProductionApproved]=useState(false);
+  const [productionBackupConfirmed,setProductionBackupConfirmed]=useState(false);
+  const [productionReconciled,setProductionReconciled]=useState(false);
+  const [productionMessage,setProductionMessage]=useState("");
+  const productionReview=useMemo(()=>validateControlledProductionXer(combinedTestXer,combinedExportReadiness,audit),[combinedTestXer,combinedExportReadiness,audit]);
+  useEffect(()=>{setProductionApproved(false);setProductionBackupConfirmed(false);setProductionReconciled(false);setProductionMessage("");},[combinedTestXer]);
+  const exportProductionXer=()=>{
+    try {
+      setProductionMessage("");
+      if(!productionApproved||!productionBackupConfirmed||!productionReconciled)throw Error("Complete all three production-release acknowledgments before export.");
+      downloadControlledProductionXer(combinedTestXer,combinedExportReadiness,audit,filename);
+      setProductionMessage("Production XER download initiated. Import into P6 only after your organization's release authorization and project-specific verification.");
+    } catch(err){setProductionMessage(`Export blocked: ${err.message}`);}
+  };
   const inAppDashboardRows=useMemo(()=>inAppItems.map(item=>{
     const pool=inAppPools[item.key];
     const result=pool?calculatePool(pool):null;
@@ -975,7 +990,7 @@ export default function CostLoadingIntelligence({projectName}) {
     {activeCostTab==="export"&&<>
       <div className="cli-panel">
         <h3>Final Review &amp; Combined XER Export</h3>
-        <p><strong>Release status: TEST ONLY</strong> · Production export remains locked until the full regression checklist is signed off.</p>
+        <p><strong>Release status: CONTROLLED PRODUCTION EXPORT</strong> · Enabled only after the automated checks pass and the authorized user confirms the release requirements. This software does not grant organizational approval.</p>
         <p>The approved allocation month is planning metadata. P6 spreads each activity's assigned cost across its scheduled duration. SentinelOS does not impose monthly resource curves.</p>
         <div className="cli-table-wrap"><table><tbody>
           <tr><th>Approved direct transfer</th><td>{usd((combinedExportReadiness.directCents||0)/100)}</td></tr>
@@ -997,6 +1012,17 @@ export default function CostLoadingIntelligence({projectName}) {
           <label style={{display:"block",margin:"12px 0"}}><input type="checkbox" checked={combinedTestAcknowledged} onChange={e=>setCombinedTestAcknowledged(e.target.checked)}/> I will import this XER only into an isolated P6 test project/database, verify its resource assignments and total budget, and will not use it for production.</label>
           <button type="button" disabled={!combinedTestAcknowledged} onClick={()=>downloadBudgetOnlyTestXer({bytes:combinedTestXer.bytes,problems:[]},filename.replace(/\.xer$/i,"")+"-COMBINED-BUDGET-TEST")}>Download combined TEST XER</button>
         </>}
+        <section style={{marginTop:18,padding:14,border:"1px solid #b8c6d4",borderRadius:8}}>
+          <h4>Controlled production XER</h4>
+          <p><strong>Automated release validation: {productionReview.findings.length?"BLOCKED":"PASSED"}</strong> · Only approved direct and shared allocations are included. P6 controls activity-duration cost spreading.</p>
+          {productionReview.findings.length>0&&<div role="alert" style={{color:"#a33"}}><strong>Release blockers</strong><ul>{productionReview.findings.map((f,i)=><li key={i}>{f}</li>)}</ul></div>}
+          <label style={{display:"block",margin:"8px 0"}}><input type="checkbox" checked={productionBackupConfirmed} onChange={e=>setProductionBackupConfirmed(e.target.checked)}/> I have exported a current project backup and retained the original source XER.</label>
+          <label style={{display:"block",margin:"8px 0"}}><input type="checkbox" checked={productionReconciled} onChange={e=>setProductionReconciled(e.target.checked)}/> I have reviewed the approved allocations, holding-account balance, and unchanged total project budget for this export.</label>
+          <label style={{display:"block",margin:"8px 0"}}><input type="checkbox" checked={productionApproved} onChange={e=>setProductionApproved(e.target.checked)}/> I confirm my organization has authorized production use of this export for this project, and I accept responsibility for P6 import and post-import verification.</label>
+          <button type="button" disabled={productionReview.findings.length>0||!productionApproved||!productionBackupConfirmed||!productionReconciled} onClick={exportProductionXer}>Download controlled production XER</button>
+          {productionMessage&&<p role="status">{productionMessage}</p>}
+          <p className="cli-footnote">A download does not change the source schedule or constitute approval to overwrite an existing P6 project. Verify the import target, resource assignments, costs, dates, logic, and status in P6.</p>
+        </section>
         <details style={{marginTop:18}}><summary><strong>Production release checklist (manual verification)</strong></summary>
           <ul>
             <li>Export a project JSON backup and confirm it can be restored.</li>
@@ -1004,7 +1030,7 @@ export default function CostLoadingIntelligence({projectName}) {
             <li>Verify exactly one standard-cost resource assignment per receiving activity.</li>
             <li>Compare source and exported XER: budget, WBS, logic, activity dates, and actuals.</li>
             <li>Import into isolated P6 and verify resource budget rollups and P6's duration-based cost spreading.</li>
-            <li>Obtain internal approval for production use. This release does not enable it.</li>
+            <li>Obtain internal approval for production use before checking the production authorization box.</li>
           </ul>
         </details>
       </div>

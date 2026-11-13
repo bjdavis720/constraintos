@@ -1,0 +1,12 @@
+SentinelOS Phase 5B — Controlled Production Export
+
+Changed: src/components/CostLoadingIntelligence.jsx
+Added: src/utils/costLoadingProductionRelease.js
+
+The tested combined XER generation logic is unchanged.
+Production download is gated by independent approval/budget/holding/assignment checks and three explicit confirmations.
+Production export requires organizational authorization; the software cannot grant it.
+Retains the existing TEST download and project JSON backup.
+
+Installation: unzip -o SentinelOS-Phase5B-Production-Patch.zip; npm run build; npm run dev
+Before use: export project backup; confirm your Git rollback tag exists.
